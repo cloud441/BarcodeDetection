@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.14)
+cmake_minimum_required (VERSION 3.5)
 project (BarcodeDetector CUDA CXX)
 
 include(FetchContent)
@@ -29,19 +29,23 @@ endif()
 FetchContent_MakeAvailable(spdlog)
 FetchContent_MakeAvailable(CLI11)
 
+#set(CMAKE_CXX_STANDARD LANGUAGES 11)
+#set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR} )
+find_package( OpenCV REQUIRED)
 find_package(PNG REQUIRED)
 find_package(CUDA REQUIRED)
 find_package(TBB REQUIRED)
 
+include_directories( ${OpenCV_INCLUDE_DIRS} )
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 
-add_library(detector)
-target_compile_features(detector PUBLIC cxx_std_14)
-target_link_libraries(detector PRIVATE spdlog::spdlog)
+add_executable(detector)
+target_compile_features( detector PUBLIC cxx_std_14 )
+target_link_libraries( detector PRIVATE ${OpenCV_LIBS}  spdlog::spdlog )
 
 
 target_sources(detector PRIVATE src/detector.hpp src/detector.cu)
