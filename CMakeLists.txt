@@ -43,10 +43,24 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 
+include_directories(
+        src/
+        src/detectors/
+
+    )
+
+
 add_executable(detector)
 target_compile_features( detector PUBLIC cxx_std_14 )
 target_link_libraries( detector PRIVATE ${OpenCV_LIBS}  spdlog::spdlog )
 
 
-target_sources(detector PRIVATE src/detector.hpp src/detector.cu)
+target_sources(detector PRIVATE
+        src/detector.hpp
+        src/detector.cu
+        src/detectors/detectorInterface.hpp
+        src/detectors/detectorInterface.cpp
+        )
+
+
 set_target_properties(detector PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

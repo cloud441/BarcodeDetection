@@ -2,6 +2,9 @@
 
 int main(void)
 {
-    std::cout << "Nothing to do." << std::endl;
+
+    DetectorInterface detector = DetectorInterface(DetectorMode::IMAGE);
+    detector.load_img("../data/bate.jpg");
+
     return 0;
 }
