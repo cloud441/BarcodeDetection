@@ -56,10 +56,12 @@ target_link_libraries( detector PRIVATE ${OpenCV_LIBS}  spdlog::spdlog )
 
 
 target_sources(detector PRIVATE
-        src/detector.hpp
-        src/detector.cu
+        src/main.hpp
+        src/main.cu
         src/detectors/detectorInterface.hpp
         src/detectors/detectorInterface.cpp
+        src/detectors/cpu_baseline.hpp
+        src/detectors/cpu_baseline.cpp
         )
 
 

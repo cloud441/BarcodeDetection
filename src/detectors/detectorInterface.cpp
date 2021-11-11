@@ -26,3 +26,7 @@ void DetectorInterface::load_img(std::string path, int scale) {
         destroyWindow(win_name);
     }
 }
+
+Mat DetectorInterface::get_img() {
+    return this->img_;
+}
