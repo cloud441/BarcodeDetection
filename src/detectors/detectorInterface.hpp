@@ -24,6 +24,7 @@ class DetectorInterface {
         Mat v_derivatives_;
         Mat h_patch_gradient_;
         Mat v_patch_gradient_;
+        Mat patch_barcodeness_;
 
 
 
@@ -34,6 +35,7 @@ class DetectorInterface {
 
         virtual void compute_derivatives(int pool_size, int n_filters) = 0;
         virtual void compute_gradient(int pool_size) = 0;
+        virtual void compute_barcodeness(int pool_size) = 0;
 
 
         Mat get_img();

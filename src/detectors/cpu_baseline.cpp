@@ -86,3 +86,17 @@ void CPUBaseline::load_img(std::string path, int scale) {
     this->DetectorInterface::load_img(path, scale);
     this->img_ = this->DetectorInterface::get_img();
 }
+
+
+
+void CPUBaseline::compute_barcodeness(int pool_size) {
+    this->patch_barcodeness_ = this->h_patch_gradient_ - this->v_patch_gradient_;    
+
+    if (true) {
+        std::string win_name = std::string("patch barcodeness image");
+        namedWindow(win_name);
+        imshow(win_name, this->patch_barcodeness_);
+        waitKey(0);
+        destroyWindow(win_name);
+    }
+}

@@ -14,5 +14,7 @@ int main(int argc, char **argv)
 
     detector.compute_gradient(31);
 
+    detector.compute_barcodeness(31);
+
     return 0;
 }
