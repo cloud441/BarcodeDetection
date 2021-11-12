@@ -1,10 +1,14 @@
 #include "main.hpp"
 
-int main(void)
+int main(int argc, char **argv)
 {
+    if (argc != 2) {
+        std::cerr << "Error: you need to provide a image path (1 argument required)" << std::endl;
+        exit(1);
+    }
 
     CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE);
-    detector.load_img("../data/bate.jpg");
+    detector.load_img(argv[1], 2);
 
     detector.compute_derivatives(detector.get_img(), 31);
 

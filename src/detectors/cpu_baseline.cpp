@@ -28,7 +28,9 @@ void CPUBaseline::compute_derivatives(Mat img, int pool_size, int n_filters) {
 
 
             h_derivatives.at<unsigned char>(i, j) = std::abs(sum(sobel_x * patch)[0]);
-            v_derivatives.at<unsigned char>(i, j) = std::abs(sum(sobel_y * patch)[0]);
+            flip(patch, patch, 0);
+            transpose(patch, patch);
+            v_derivatives.at<unsigned char>(i, j) = std::abs(sum(sobel_x * patch)[0]);
         }
     }
 
