@@ -89,13 +89,48 @@ void CPUBaseline::load_img(std::string path, int scale) {
 
 
 
-void CPUBaseline::compute_barcodeness(int pool_size) {
-    this->patch_barcodeness_ = this->h_patch_gradient_ - this->v_patch_gradient_;    
+void CPUBaseline::compute_barcodeness() {
+    this->patch_barcodeness_ = this->v_patch_gradient_ - this->h_patch_gradient_;    
 
     if (true) {
         std::string win_name = std::string("patch barcodeness image");
         namedWindow(win_name);
         imshow(win_name, this->patch_barcodeness_);
+        waitKey(0);
+        destroyWindow(win_name);
+    }
+}
+
+
+void CPUBaseline::clean_barcodeness(int pp_pool_size) {
+    Mat struct_elt = getStructuringElement(MORPH_RECT, Size(pp_pool_size, pp_pool_size));
+
+    struct_elt(Range(pp_pool_size / 2 - 1, pp_pool_size / 2 + 2), Range(0, pp_pool_size)) = 0;
+    struct_elt = 1 - struct_elt;
+
+    morphologyEx(this->patch_barcodeness_, this->patch_barcodeness_, MORPH_CLOSE, struct_elt);
+
+    if (true) {
+        std::string win_name = std::string("cleaned patch barcodeness image");
+        namedWindow(win_name);
+        imshow(win_name, this->patch_barcodeness_);
+        waitKey(0);
+        destroyWindow(win_name);
+    }
+}
+
+
+void CPUBaseline::show_final_result(int pool_size) {
+    double max_value;
+    minMaxLoc(this->patch_barcodeness_, nullptr, &max_value, nullptr, nullptr);
+
+    threshold(this->patch_barcodeness_, this->patch_barcodeness_, max_value / 2, 255, THRESH_BINARY);
+    resize(this->patch_barcodeness_, this->final_result_, Size(), pool_size, pool_size, INTER_NEAREST);
+    
+    if (true) {
+        std::string win_name = std::string("final barcode detection image");
+        namedWindow(win_name);
+        imshow(win_name, this->final_result_);
         waitKey(0);
         destroyWindow(win_name);
     }
