@@ -10,7 +10,9 @@ int main(int argc, char **argv)
     CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE);
     detector.load_img(argv[1], 2);
 
+    detector.cpu_benchmark_start();
     detector.compute_derivatives(31);
+    detector.cpu_benchmark_end();
 
     detector.compute_gradient(31);
 

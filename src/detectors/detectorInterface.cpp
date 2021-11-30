@@ -1,8 +1,9 @@
 #include "detectorInterface.hpp"
 
 
-DetectorInterface::DetectorInterface(DetectorMode mode) {
+DetectorInterface::DetectorInterface(DetectorMode mode, bool display) {
     this->mode_ = mode;
+    display_ = display;
 }
 
 
@@ -18,7 +19,7 @@ void DetectorInterface::load_img(std::string path, int scale) {
         pyrDown(this->img_, this->img_);
     }
 
-    if (true) {
+    if (display_) {
         std::string win_name = std::string("Grayscale and scaled image");
         namedWindow(win_name);
         imshow(win_name, this->img_);
@@ -29,4 +30,24 @@ void DetectorInterface::load_img(std::string path, int scale) {
 
 Mat DetectorInterface::get_img() {
     return this->img_;
+}
+
+void  DetectorInterface::gpu_benchmark_start()
+{
+}
+
+void  DetectorInterface::gpu_benchmark_end()
+{
+}
+
+void  DetectorInterface::cpu_benchmark_start()
+{
+    this->clock_ = std::clock();
+}
+
+void  DetectorInterface::cpu_benchmark_end()
+{
+    clock_ = std::clock() - clock_;
+    printf ("CPU: %ld clicks (%f seconds).\n", clock_, ((float) clock_)/CLOCKS_PER_SEC);
+
 }

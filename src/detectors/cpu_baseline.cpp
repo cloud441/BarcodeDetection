@@ -37,7 +37,7 @@ void CPUBaseline::compute_derivatives(int pool_size, int n_filters) {
     this->h_derivatives_ = h_derivatives;
     this->v_derivatives_ = v_derivatives;
 
-    if (true) {
+    if (this->display_) {
         std::string win_name = std::string("horizontal derivative image");
         namedWindow(win_name);
         imshow(win_name, this->h_derivatives_);
@@ -92,7 +92,7 @@ void CPUBaseline::load_img(std::string path, int scale) {
 void CPUBaseline::compute_barcodeness() {
     this->patch_barcodeness_ = this->v_patch_gradient_ - this->h_patch_gradient_;    
 
-    if (true) {
+    if (this->display_) {
         std::string win_name = std::string("patch barcodeness image");
         namedWindow(win_name);
         imshow(win_name, this->patch_barcodeness_);
@@ -110,7 +110,7 @@ void CPUBaseline::clean_barcodeness(int pp_pool_size) {
 
     morphologyEx(this->patch_barcodeness_, this->patch_barcodeness_, MORPH_CLOSE, struct_elt);
 
-    if (true) {
+    if (this->display_) {
         std::string win_name = std::string("cleaned patch barcodeness image");
         namedWindow(win_name);
         imshow(win_name, this->patch_barcodeness_);
@@ -127,7 +127,7 @@ void CPUBaseline::show_final_result(int pool_size) {
     threshold(this->patch_barcodeness_, this->patch_barcodeness_, max_value / 2, 255, THRESH_BINARY);
     resize(this->patch_barcodeness_, this->final_result_, Size(), pool_size, pool_size, INTER_NEAREST);
     
-    if (true) {
+    if (this->display_) {
         std::string win_name = std::string("final barcode detection image");
         namedWindow(win_name);
         imshow(win_name, this->final_result_);
