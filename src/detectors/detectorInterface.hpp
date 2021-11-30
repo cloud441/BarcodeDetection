@@ -17,6 +17,7 @@ class DetectorInterface {
 
     private:
 
+        bool display_;
         DetectorMode mode_;
         Mat img_;
 
@@ -35,7 +36,6 @@ class DetectorInterface {
 
 
     public:
-        bool display_;
 
         DetectorInterface(DetectorMode mode, bool display = false);
         void load_img(std::string path, int scale = 1);

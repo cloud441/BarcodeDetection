@@ -3,7 +3,7 @@
 
 DetectorInterface::DetectorInterface(DetectorMode mode, bool display) {
     this->mode_ = mode;
-    display_ = display;
+    this->display_ = display;
 }
 
 

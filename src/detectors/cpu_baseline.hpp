@@ -9,6 +9,7 @@ class CPUBaseline: public DetectorInterface {
 
     private:
 
+        bool display_;
         DetectorMode mode_;
         Mat img_;
 
@@ -21,7 +22,7 @@ class CPUBaseline: public DetectorInterface {
 
     public:
 
-        CPUBaseline(DetectorMode mode);
+        CPUBaseline(DetectorMode mode, bool display=false);
         void compute_derivatives(int pool_size = 31, int n_filters = 2);
         void compute_gradient(int pool_size = 31);
         void compute_barcodeness();

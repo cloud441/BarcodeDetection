@@ -1,8 +1,8 @@
 #include "cpu_baseline.hpp"
 
 
-CPUBaseline::CPUBaseline(DetectorMode mode)
-    : DetectorInterface(mode) {
+CPUBaseline::CPUBaseline(DetectorMode mode, bool display)
+    : DetectorInterface(mode, display) {
     }
 
 
