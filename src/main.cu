@@ -6,7 +6,7 @@ int main(int argc, char **argv)
         std::cerr << "Error: you need to provide a image path (1 argument required)" << std::endl;
         exit(1);
     }
-
+    /*
     CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE);
     detector.load_img(argv[1], 2);
 
@@ -20,7 +20,10 @@ int main(int argc, char **argv)
 
     detector.clean_barcodeness();
 
-    detector.show_final_result();
+    detector.show_final_result();*/
+
+    GPUBaseline detector = GPUBaseline(DetectorMode::IMAGE);
+    detector.load_img(argv[1], 2);
 
     return 0;
 }

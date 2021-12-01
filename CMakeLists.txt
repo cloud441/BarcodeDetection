@@ -62,6 +62,8 @@ target_sources(detector PRIVATE
         src/detectors/detectorInterface.cpp
         src/detectors/cpu_baseline.hpp
         src/detectors/cpu_baseline.cpp
+        src/detectors/gpu_baseline.cu
+        src/detectors/gpu_baseline.hpp
         )
 
 
