@@ -1,31 +1,27 @@
-#include "cpu_baseline.hpp"
+#include "cpu_multithread.hpp"
 
 
-CPUBaseline::CPUBaseline(DetectorMode mode, bool display)
+CPUMultithread::CPUMultithread(DetectorMode mode, bool display)
     : DetectorInterface(mode, display) {
         this->mode_ = mode;
         this->display_ = display;
     }
 
 
-void CPUBaseline::compute_derivatives(int pool_size, int n_filters) {
-    if (n_filters != 2 || !pool_size) {
-        std::cerr << "Error: compute derivatives with more than 2 filters"
-            <<" isn't implemented yet." << std::endl;
-        exit(1);
-    }
-
-    Mat h_derivatives = Mat::zeros(Size(this->img_.cols, this->img_.rows), CV_8UC1);
-    Mat v_derivatives = Mat::zeros(Size(this->img_.cols, this->img_.rows), CV_8UC1);
+void CPUMultithread::thread_compute_derivatives(Mat sub_img, int index, std::vector<Mat> *derivatives_vec, int pool_size, int n_filters) {
+    n_filters = n_filters;
+    pool_size = pool_size;
+    Mat h_derivatives = Mat::zeros(Size(sub_img.cols, sub_img.rows), CV_8UC1);
+    Mat v_derivatives = Mat::zeros(Size(sub_img.cols, sub_img.rows), CV_8UC1);
 
     Mat sobel_x = (Mat_<float>(3,3) << -1, 0, 1, -2, 0, 2, -1, 0, 1);
-    Mat sobel_y = (Mat_<float>(3,3) << -1, -2, -1, 0, 0, 0, 1, 2, 1);
+    //Mat sobel_y = (Mat_<float>(3,3) << -1, -2, -1, 0, 0, 0, 1, 2, 1);
 
     Mat patch;
 
-    for (int i = 1; i < this->img_.rows - 1; i++) {
-        for (int j = 1; j < this->img_.cols - 1; j++) {
-            patch = this->img_(Range(i - 1,i + 2), Range(j - 1,j + 2));
+    for (int i = 1; i < sub_img.rows - 1; i++) {
+        for (int j = 1; j < sub_img.cols - 1; j++) {
+            patch = sub_img(Range(i - 1,i + 2), Range(j - 1,j + 2));
             patch.convertTo(patch, CV_32FC1);
 
 
@@ -36,8 +32,44 @@ void CPUBaseline::compute_derivatives(int pool_size, int n_filters) {
         }
     }
 
-    this->h_derivatives_ = h_derivatives;
-    this->v_derivatives_ = v_derivatives;
+    (*derivatives_vec)[index] = h_derivatives;
+    (*derivatives_vec)[index + 1] = v_derivatives;
+}
+
+
+
+void CPUMultithread::compute_derivatives(int pool_size, int n_filters) {
+    if (n_filters != 2 || !pool_size) {
+        std::cerr << "Error: compute derivatives with more than 2 filters"
+            <<" isn't implemented yet." << std::endl;
+        exit(1);
+    }
+
+    int n_thread =  std::thread::hardware_concurrency();
+    std::vector<std::thread> thread_vec(n_thread);
+    std::vector<Mat> derivatives_vec(2 * n_thread);
+
+    for (auto it = std::begin(thread_vec); it != std::end(thread_vec); it++) {
+        Mat sub_mat = get_block_from_index(this->img_, it - std::begin(thread_vec), n_thread);
+        *it = std::thread(this->thread_compute_derivatives, sub_mat, it - std::begin(thread_vec), &derivatives_vec, pool_size, n_filters);
+    }
+
+    for (int i = 0; i < n_thread; i++) {
+        thread_vec[i].join();
+    }
+
+    Mat h_derivatives;
+    Mat h_line_matrix;
+    Mat v_derivatives;
+    Mat v_line_matrix;
+
+    for (int i = 0; i < n_thread; i ++) {
+        exit(1);
+    }
+
+
+//    this->h_derivatives_ = ;
+//    this->v_derivatives_ = ;
 
     if (this->display_) {
         std::string win_name = std::string("horizontal derivative image");
@@ -55,7 +87,7 @@ void CPUBaseline::compute_derivatives(int pool_size, int n_filters) {
 }
 
 
-void CPUBaseline::compute_gradient(int pool_size) {
+void CPUMultithread::compute_gradient(int pool_size) {
     Mat h_patch = Mat::zeros(Size(this->img_.cols / pool_size, this->img_.rows / pool_size), CV_8UC1);
     Mat v_patch = Mat::zeros(Size(this->img_.cols / pool_size, this->img_.rows / pool_size), CV_8UC1);
 
@@ -75,7 +107,6 @@ void CPUBaseline::compute_gradient(int pool_size) {
 
             tmp_patch = this->v_derivatives_(Range(x_patch_begin, x_patch_end), Range(y_patch_begin, y_patch_end));
             v_patch.at<unsigned char>(i, j) = mean(tmp_patch)[0];
-            
         }
     }
 
@@ -84,15 +115,15 @@ void CPUBaseline::compute_gradient(int pool_size) {
 }
 
 
-void CPUBaseline::load_img(std::string path, int scale) {
+void CPUMultithread::load_img(std::string path, int scale) {
     this->DetectorInterface::load_img(path, scale);
     this->img_ = this->DetectorInterface::get_img();
 }
 
 
 
-void CPUBaseline::compute_barcodeness() {
-    this->patch_barcodeness_ = this->v_patch_gradient_ - this->h_patch_gradient_;    
+void CPUMultithread::compute_barcodeness() {
+    this->patch_barcodeness_ = this->v_patch_gradient_ - this->h_patch_gradient_;
 
     if (this->display_) {
         std::string win_name = std::string("patch barcodeness image");
@@ -104,7 +135,7 @@ void CPUBaseline::compute_barcodeness() {
 }
 
 
-void CPUBaseline::clean_barcodeness(int pp_pool_size) {
+void CPUMultithread::clean_barcodeness(int pp_pool_size) {
     Mat struct_elt = getStructuringElement(MORPH_RECT, Size(pp_pool_size, pp_pool_size));
 
     struct_elt(Range(pp_pool_size / 2 - 1, pp_pool_size / 2 + 2), Range(0, pp_pool_size)) = 0;
@@ -122,13 +153,13 @@ void CPUBaseline::clean_barcodeness(int pp_pool_size) {
 }
 
 
-void CPUBaseline::show_final_result(int pool_size) {
+void CPUMultithread::show_final_result(int pool_size) {
     double max_value;
     minMaxLoc(this->patch_barcodeness_, nullptr, &max_value, nullptr, nullptr);
 
     threshold(this->patch_barcodeness_, this->patch_barcodeness_, max_value / 2, 255, THRESH_BINARY);
     resize(this->patch_barcodeness_, this->final_result_, Size(), pool_size, pool_size, INTER_NEAREST);
-    
+
     if (this->display_) {
         std::string win_name = std::string("final barcode detection image");
         namedWindow(win_name);
@@ -136,4 +167,24 @@ void CPUBaseline::show_final_result(int pool_size) {
         waitKey(0);
         destroyWindow(win_name);
     }
+}
+
+Mat CPUMultithread::get_block_from_index(Mat img, int index, int index_max) {
+    int x_division_nb = sqrt(index_max);
+    int y_division_nb;
+
+    while (index_max % x_division_nb)
+        x_division_nb -= 1;
+
+    y_division_nb = index_max / x_division_nb;
+
+    int x_block_size = img.rows / x_division_nb;
+    int y_block_size = img.cols / y_division_nb;
+
+    int x_min = (index / y_division_nb) * x_block_size;
+    int x_max = x_min + x_block_size;
+    int y_min = (index % y_division_nb) * y_block_size;
+    int y_max = y_min + y_block_size;
+
+    return img(Range(x_min, x_max), Range(y_min, y_max));
 }

@@ -7,7 +7,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE);
+    CPUMultithread detector = CPUMultithread(DetectorMode::IMAGE);
     detector.load_img(argv[1], 2);
 
     detector.cpu_benchmark_start();
