@@ -32,8 +32,8 @@ void CPUMultithread::thread_compute_derivatives(Mat sub_img, int index, std::vec
         }
     }
 
-    (*derivatives_vec)[index] = h_derivatives;
-    (*derivatives_vec)[index + 1] = v_derivatives;
+    (*derivatives_vec)[2 * index] = h_derivatives;
+    (*derivatives_vec)[2 * index + 1] = v_derivatives;
 }
 
 
@@ -45,6 +45,7 @@ void CPUMultithread::compute_derivatives(int pool_size, int n_filters) {
         exit(1);
     }
 
+    // Split image in n_thread blocks to compute derivatives in multithreading:
     int n_thread =  std::thread::hardware_concurrency();
     std::vector<std::thread> thread_vec(n_thread);
     std::vector<Mat> derivatives_vec(2 * n_thread);
@@ -58,18 +59,12 @@ void CPUMultithread::compute_derivatives(int pool_size, int n_filters) {
         thread_vec[i].join();
     }
 
-    Mat h_derivatives;
-    Mat h_line_matrix;
-    Mat v_derivatives;
-    Mat v_line_matrix;
 
-    for (int i = 0; i < n_thread; i ++) {
-        exit(1);
-    }
+    // Concatenate blocks to build original image:
+    std::vector<Mat> derivatives = concatenate_derivatives_block(derivatives_vec, n_thread);
 
-
-//    this->h_derivatives_ = ;
-//    this->v_derivatives_ = ;
+    this->h_derivatives_ = derivatives[0];
+    this->v_derivatives_ = derivatives[1];
 
     if (this->display_) {
         std::string win_name = std::string("horizontal derivative image");
@@ -118,6 +113,20 @@ void CPUMultithread::compute_gradient(int pool_size) {
 void CPUMultithread::load_img(std::string path, int scale) {
     this->DetectorInterface::load_img(path, scale);
     this->img_ = this->DetectorInterface::get_img();
+
+    int n_thread = std::thread::hardware_concurrency();
+    int x_division_nb = sqrt(n_thread);
+    int y_division_nb;
+
+    while (n_thread % x_division_nb)
+        x_division_nb -= 1;
+
+    y_division_nb = n_thread / x_division_nb;
+
+    int x_block_size = this->img_.rows / x_division_nb;
+    int y_block_size = this->img_.cols / y_division_nb;
+
+    resize(this->img_, this->img_, Size(y_block_size * y_division_nb, x_block_size * x_division_nb), INTER_LINEAR);
 }
 
 
@@ -167,24 +176,4 @@ void CPUMultithread::show_final_result(int pool_size) {
         waitKey(0);
         destroyWindow(win_name);
     }
-}
-
-Mat CPUMultithread::get_block_from_index(Mat img, int index, int index_max) {
-    int x_division_nb = sqrt(index_max);
-    int y_division_nb;
-
-    while (index_max % x_division_nb)
-        x_division_nb -= 1;
-
-    y_division_nb = index_max / x_division_nb;
-
-    int x_block_size = img.rows / x_division_nb;
-    int y_block_size = img.cols / y_division_nb;
-
-    int x_min = (index / y_division_nb) * x_block_size;
-    int x_max = x_min + x_block_size;
-    int y_min = (index % y_division_nb) * y_block_size;
-    int y_max = y_min + y_block_size;
-
-    return img(Range(x_min, x_max), Range(y_min, y_max));
 }

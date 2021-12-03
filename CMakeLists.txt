@@ -64,6 +64,8 @@ target_sources(detector PRIVATE
         src/detectors/cpu_baseline.cpp
         src/detectors/cpu_multithread.hpp
         src/detectors/cpu_multithread.cpp
+        src/detectors/utils.hpp
+        src/detectors/utils.cpp
         )
 
 

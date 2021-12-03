@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "detectorInterface.hpp"
+#include "utils.hpp"
 
 
 class CPUMultithread: public DetectorInterface {
@@ -38,5 +39,4 @@ class CPUMultithread: public DetectorInterface {
     private:
 
         static void thread_compute_derivatives(Mat sub_img, int index, std::vector<Mat> *derivatives_vec, int pool_size, int n_filters);
-        Mat get_block_from_index(Mat img, int index, int index_max);
 };
