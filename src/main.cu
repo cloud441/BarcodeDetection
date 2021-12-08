@@ -7,12 +7,12 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    CPUMultithread detector = CPUMultithread(DetectorMode::IMAGE, true);
+    CPUMultithread detector = CPUMultithread(DetectorMode::IMAGE);
     detector.load_img(argv[1], 2);
 
-    detector.cpu_benchmark_start();
+//    detector.cpu_benchmark_start();
     detector.compute_derivatives(31);
-    detector.cpu_benchmark_end();
+//    detector.cpu_benchmark_end();
 
     detector.compute_gradient(31);
 

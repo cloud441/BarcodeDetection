@@ -61,7 +61,7 @@ void CPUMultithread::compute_derivatives(int pool_size, int n_filters) {
 
 
     // Concatenate blocks to build original image:
-    std::vector<Mat> derivatives = concatenate_derivatives_block(derivatives_vec, n_thread);
+    std::vector<Mat> derivatives = concatenate_h_v_block(derivatives_vec, n_thread);
 
     this->h_derivatives_ = derivatives[0];
     this->v_derivatives_ = derivatives[1];
@@ -82,31 +82,57 @@ void CPUMultithread::compute_derivatives(int pool_size, int n_filters) {
 }
 
 
-void CPUMultithread::compute_gradient(int pool_size) {
-    Mat h_patch = Mat::zeros(Size(this->img_.cols / pool_size, this->img_.rows / pool_size), CV_8UC1);
-    Mat v_patch = Mat::zeros(Size(this->img_.cols / pool_size, this->img_.rows / pool_size), CV_8UC1);
+void CPUMultithread::thread_compute_gradient(Mat h_sub_img, Mat v_sub_img, int index, std::vector<Mat> *gradients_vec, int pool_size) {
+    Mat h_patch = Mat::zeros(Size(h_sub_img.cols / pool_size, h_sub_img.rows / pool_size), CV_8UC1);
+    Mat v_patch = Mat::zeros(Size(v_sub_img.cols / pool_size, v_sub_img.rows / pool_size), CV_8UC1);
 
     int x_patch_begin, x_patch_end, y_patch_begin, y_patch_end;
 
     Mat tmp_patch;
-    for (int i = 0; i < (this->img_.rows / pool_size); i++) {
+    for (int i = 0; i < (h_sub_img.rows / pool_size); i++) {
         x_patch_begin = i * pool_size;
         x_patch_end = (i + 1) * pool_size;
 
-        for (int j = 0; j < (this->img_.cols / pool_size); j++) {
+        for (int j = 0; j < (h_sub_img.cols / pool_size); j++) {
             y_patch_begin = j * pool_size;
             y_patch_end = (j + 1) * pool_size;
 
-            tmp_patch = this->h_derivatives_(Range(x_patch_begin, x_patch_end), Range(y_patch_begin, y_patch_end));
+            tmp_patch = h_sub_img(Range(x_patch_begin, x_patch_end), Range(y_patch_begin, y_patch_end));
             h_patch.at<unsigned char>(i, j) = mean(tmp_patch)[0];
 
-            tmp_patch = this->v_derivatives_(Range(x_patch_begin, x_patch_end), Range(y_patch_begin, y_patch_end));
+            tmp_patch = v_sub_img(Range(x_patch_begin, x_patch_end), Range(y_patch_begin, y_patch_end));
             v_patch.at<unsigned char>(i, j) = mean(tmp_patch)[0];
         }
     }
 
-    this->h_patch_gradient_ = h_patch;
-    this->v_patch_gradient_ = v_patch;
+    (*gradients_vec)[2 * index] = h_patch;
+    (*gradients_vec)[2 * index + 1] = v_patch;
+}
+
+
+void CPUMultithread::compute_gradient(int pool_size) {
+    // Split image in n_thread blocks to compute derivatives in multithreading:
+    int n_thread =  std::thread::hardware_concurrency();
+    std::vector<std::thread> thread_vec(n_thread);
+    std::vector<Mat> gradients_vec(2 * n_thread);
+
+    for (auto it = std::begin(thread_vec); it != std::end(thread_vec); it++) {
+        Mat h_sub_mat = get_block_from_index(this->h_derivatives_, it - std::begin(thread_vec), n_thread);
+        Mat v_sub_mat = get_block_from_index(this->v_derivatives_, it - std::begin(thread_vec), n_thread);
+
+        *it = std::thread(this->thread_compute_gradient, h_sub_mat, v_sub_mat, it - std::begin(thread_vec), &gradients_vec, pool_size);
+    }
+
+    for (int i = 0; i < n_thread; i++) {
+        thread_vec[i].join();
+    }
+
+
+    // Concatenate blocks to build original image:
+    std::vector<Mat> derivatives = concatenate_h_v_block(gradients_vec, n_thread);
+
+    this->h_patch_gradient_ = derivatives[0];
+    this->v_patch_gradient_ = derivatives[1];
 }
 
 
@@ -130,9 +156,32 @@ void CPUMultithread::load_img(std::string path, int scale) {
 }
 
 
+void CPUMultithread::thread_compute_barcodeness(Mat h_sub_gradient, Mat v_sub_gradient, int index, std::vector<Mat> *patch_barcodeness_vec) {
+
+    (*patch_barcodeness_vec)[index] = v_sub_gradient - h_sub_gradient;
+}
+
 
 void CPUMultithread::compute_barcodeness() {
-    this->patch_barcodeness_ = this->v_patch_gradient_ - this->h_patch_gradient_;
+    // Split image in n_thread blocks to compute derivatives in multithreading:
+    int n_thread =  std::thread::hardware_concurrency();
+    std::vector<std::thread> thread_vec(n_thread);
+    std::vector<Mat> patch_barcodeness_vec(n_thread);
+
+    for (auto it = std::begin(thread_vec); it != std::end(thread_vec); it++) {
+        Mat h_sub_mat = get_block_from_index(this->h_patch_gradient_, it - std::begin(thread_vec), n_thread);
+        Mat v_sub_mat = get_block_from_index(this->v_patch_gradient_, it - std::begin(thread_vec), n_thread);
+
+        *it = std::thread(this->thread_compute_barcodeness, h_sub_mat, v_sub_mat, it - std::begin(thread_vec), &patch_barcodeness_vec);
+    }
+
+    for (int i = 0; i < n_thread; i++) {
+        thread_vec[i].join();
+    }
+
+
+    // Concatenate blocks to build original image:
+    this->patch_barcodeness_ = concatenate_block(patch_barcodeness_vec, n_thread);
 
     if (this->display_) {
         std::string win_name = std::string("patch barcodeness image");
@@ -144,13 +193,35 @@ void CPUMultithread::compute_barcodeness() {
 }
 
 
+void CPUMultithread::thread_clean_barcodeness(Mat sub_mat, int index, std::vector<Mat> *clean_blocks_vec, Mat struct_element) {
+    morphologyEx(sub_mat, (*clean_blocks_vec)[index], MORPH_CLOSE, struct_element);
+}
+
+
 void CPUMultithread::clean_barcodeness(int pp_pool_size) {
     Mat struct_elt = getStructuringElement(MORPH_RECT, Size(pp_pool_size, pp_pool_size));
 
     struct_elt(Range(pp_pool_size / 2 - 1, pp_pool_size / 2 + 2), Range(0, pp_pool_size)) = 0;
     struct_elt = 1 - struct_elt;
 
-    morphologyEx(this->patch_barcodeness_, this->patch_barcodeness_, MORPH_CLOSE, struct_elt);
+    // Split image in n_thread blocks to compute derivatives in multithreading:
+    int n_thread =  std::thread::hardware_concurrency();
+    std::vector<std::thread> thread_vec(n_thread);
+    std::vector<Mat> clean_blocks_vec(n_thread);
+
+    for (auto it = std::begin(thread_vec); it != std::end(thread_vec); it++) {
+        Mat sub_mat = get_block_from_index(this->patch_barcodeness_, it - std::begin(thread_vec), n_thread);
+
+        *it = std::thread(this->thread_clean_barcodeness, sub_mat, it - std::begin(thread_vec), &clean_blocks_vec, struct_elt);
+    }
+
+    for (int i = 0; i < n_thread; i++) {
+        thread_vec[i].join();
+    }
+
+
+    // Concatenate blocks to build original image:
+    this->patch_barcodeness_ = concatenate_block(clean_blocks_vec, n_thread);
 
     if (this->display_) {
         std::string win_name = std::string("cleaned patch barcodeness image");

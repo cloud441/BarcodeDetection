@@ -39,4 +39,7 @@ class CPUMultithread: public DetectorInterface {
     private:
 
         static void thread_compute_derivatives(Mat sub_img, int index, std::vector<Mat> *derivatives_vec, int pool_size, int n_filters);
+        static void thread_compute_gradient(Mat h_sub_img, Mat v_sub_img, int index, std::vector<Mat> *derivatives_vec, int pool_size);
+        static void thread_compute_barcodeness(Mat h_sub_gradient, Mat v_sub_gradient, int index, std::vector<Mat> *patch_barcodeness_vec);
+        static void thread_clean_barcodeness(Mat sub_mat, int index, std::vector<Mat> *clean_blocks_vec, Mat struct_element);
 };
