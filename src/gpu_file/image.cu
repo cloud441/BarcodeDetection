@@ -73,30 +73,27 @@ int Image::get_size()
 int main(void)
 {
     //Image image("../../img/codebar.jpg");
-
     //image.create_gray_array();
-
     //image.save_gray_img();
+
 
     int width, height, nb_chan;
     unsigned char *img = stbi_load("../../img/codebar.jpg", &width, &height, &nb_chan, 0);
 
-    if (img == NULL)
-    {
-        printf("Error !\n");
-        exit(1);
-    }
+    size_t img_size = width * height * nb_chan;
+    printf("We have a size of %dx%d, %d\n", width, height, img_size);
+    int gray_chan = 1;
+    size_t gray_img_size = width * height * gray_chan;
 
+    unsigned char *gray_img = (unsigned char *) malloc(gray_img_size);
 
-    size_t img_size = width * height;
-    unsigned char *gray_img = (unsigned char *) malloc(img_size);
-
-    for (unsigned char *p = img, *pg = gray_img; p != img + img_size; p += 3, p += 1)
+    for (unsigned char *p = img, *pg = gray_img; p != img + img_size; p += nb_chan, pg += gray_chan)
     {
         *pg = (uint8_t)((*p + *(p + 1) + *(p + 2))/3.0);
     }
 
-    stbi_write_jpg("../../img/img_gray_result.jpg", width, height, 1, gray_img, 100);
+    stbi_write_jpg("../../img/img_gray_result.jpg", width, height, gray_chan, gray_img, 100);
+    stbi_write_jpg("../../img/img_result.jpg", width, height, nb_chan, img, 100);
 
     return 0;
 }
