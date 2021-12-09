@@ -46,11 +46,18 @@ Image::~Image()
 
 void Image::save_gray_img()
 {
-    stbi_write_jpg("codebar_test.jpg", width, height, nb_chan, img_array, 100);
+    stbi_write_jpg("../../img/codebar_gray_result.jpg", width, height, nb_chan, img_array, 100);
 }
 
-void create_gray_array()
+void Image::create_gray_array()
 {
+
+    // CPU Version
+    for (int i = 0; i < height * width; ++i)
+    {
+        img_gray_array[i] = img_array[i * 3] * 0.2989 +
+            img_array[i * 3 + 1] * 0.5870 + img_array[i * 3 + 2] * 0.1140;
+    }
 
 }
 
@@ -62,7 +69,9 @@ int Image::get_size()
 
 int main(void)
 {
-    Image image("codebar.jpg");
+    Image image("../../img/codebar.jpg");
+
+    image.create_gray_array();
 
     image.save_gray_img();
 

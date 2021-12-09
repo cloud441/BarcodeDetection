@@ -15,7 +15,6 @@ class Image {
         ~Image();
 
         void save_gray_img();
-
         void create_gray_array();
 
         int get_size();
