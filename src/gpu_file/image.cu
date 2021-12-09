@@ -177,6 +177,32 @@ void Image::create_gray_array()
 
 void Image::create_sobel_array()
 {
+    unsigned char *d_sobel_x;
+    unsigned char *d_sobel_y;
+    unsigned char *d_gray_img;
+
+    size_t img_size = width * height * sizeof(unsigned char);
+
+    cudaMalloc(&d_sobel_x, img_size);
+    cudaMalloc(&d_sobel_y, img_size);
+    cudaMalloc(&d_gray_img, img_size);
+
+
+    cudaMemcpy( d_sobel_x, img_sobel_x_array, img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_sobel_y, img_sobel_y_array, img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_gray_img, img_gray_array, img_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_sobel<<<gridSize, blockSize>>>(d_sobel_x, d_sobel_y, d_gray_img,
+                                        width, height, blockSize, gridSize);
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(img_sobel_x_array, d_sobel_x, img_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(img_sobel_y_array, d_sobel_y, img_size, cudaMemcpyDeviceToHost);
 
 }
 
