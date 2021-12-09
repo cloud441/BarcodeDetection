@@ -1,24 +1,32 @@
 #pragma once
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image/stb_image_write.h"
+
+
+
 class Image {
 
-	public:
+    public:
 
-		Image(int width_arg, int height_arg, int nb_chan_arg);
-		Image(const char* path);
-		~Image();
+        Image(const char* path);
+        ~Image();
 
-		void create_gray_array();
+        void save_gray_img();
 
-		int get_size();
+        void create_gray_array();
 
-	private:
+        int get_size();
 
-		int width;
-		int height;
-		int nb_chan;
+    private:
 
-		unsigned char *img_array;
-		unsigned char *img_gray_array;
+        int width;
+        int height;
+        int nb_chan;
+
+        unsigned char *img_array;
+        unsigned char *img_gray_array;
 
 };
