@@ -87,13 +87,12 @@ int main(void)
 
     unsigned char *gray_img = (unsigned char *) malloc(gray_img_size);
 
-    for (unsigned char *p = img, *pg = gray_img; p != img + img_size; p += nb_chan, pg += gray_chan)
+    for (unsigned char *p = img, *pg = gray_img; p != (img + img_size); p += nb_chan, pg += gray_chan)
     {
         *pg = (uint8_t)((*p + *(p + 1) + *(p + 2))/3.0);
     }
 
     stbi_write_jpg("../../img/img_gray_result.jpg", width, height, gray_chan, gray_img, 100);
-    stbi_write_jpg("../../img/img_result.jpg", width, height, nb_chan, img, 100);
 
     return 0;
 }
