@@ -46,7 +46,7 @@ Image::~Image()
 
 void Image::save_gray_img()
 {
-    stbi_write_jpg("../../img/codebar_gray_result.jpg", width, height, nb_chan, img_array, 100);
+    stbi_write_jpg("../../img/codebar_gray_result.jpg", width, height, 1, img_gray_array, 100);
 }
 
 void Image::create_gray_array()
