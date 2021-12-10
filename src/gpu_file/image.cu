@@ -114,8 +114,8 @@ Image::Image(const char* path, int pool_size_arg)
     img_gray_array = new unsigned char[width * height];
     img_sobel_x_array = new unsigned char[width * height];
     img_sobel_y_array = new unsigned char[width * height];
-    img_sobel_patch_x_array = new unsigned char[patch_size_x * patch_size_y];
-    img_sobel_patch_y_array = new unsigned char[patch_size_x * patch_size_y];
+    img_sobel_patch_x_array = new unsigned char[nb_patch_x * nb_patch_y];
+    img_sobel_patch_y_array = new unsigned char[nb_patch_x * nb_patch_y];
 }
 
 void Image::print_image()
@@ -123,7 +123,7 @@ void Image::print_image()
 
     printf("The image have a size of %d x %d x %d\n", width, height, nb_chan);
     printf("The pool size is %d\n", pool_size);
-    printf("And so the image have %d patch on x and %d patch en y\n", patch_size_x, patch_size_y);
+    printf("And so the image have %d patch on x and %d patch en y\n", nb_patch_x, nb_patch_y);
 
 }
 
@@ -157,11 +157,11 @@ void Image::save_sobel_img()
 }
 
 
-void Image::save_sobel_img()
+void Image::save_patch_img()
 {
 
-    stbi_write_jpg("../../img/codebar_patch_x.jpg", width, height, 1,
-        img_patch_x_array, 100);
+    stbi_write_jpg("../../img/codebar_patch_x.jpg", nb_patch_x, nb_patch_y, 1,
+        img_sobel_patch_x_array, 100);
 
 }
 
