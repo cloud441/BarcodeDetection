@@ -94,6 +94,68 @@ __global__ void compute_sobel(unsigned char *d_sobel_x,
 }
 
 
+__global__ void compute_patch(unsigned char *d_patch_x, unsigned char *d_patch_y,
+        unsigned char *d_sobel_x_array, unsigned char *d_sobel_y_array,
+        int pool_size, int width, int height, int nb_patch_x, int nb_patch_y,
+        int blockSize, int gridSize)
+{
+
+    int nb_patch = nb_patch_x * nb_patch_y;
+
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+    while (id < nb_patch)
+    {
+
+        int id_patch_x = id % nb_patch_x;
+        int id_patch_y = id / nb_patch_y;
+
+        int id_pixel = pool_size * id_patch_y * width;
+        id_pixel += id_patch_x * pool_size;
+
+        int nb_elem = pool_size * pool_size;
+        int sum_x = 0;
+        int sum_y = 0;
+
+        for (int i = 0; i < pool_size; i++)
+        {
+            for (int j = 0; j < pool_size; j++)
+            {
+                sum_x += d_sobel_x_array[id_pixel + i * width + j];
+                sum_y += d_sobel_y_array[id_pixel + i * width + j];
+            }
+        }
+
+        sum_x = sum_x / nb_elem;
+        sum_y = sum_y / nb_elem;
+
+        if (sum_x < 0)
+        {
+            sum_x = 0;
+        }
+        else if (sum_x > 255)
+        {
+            sum_x = 255;
+        }
+
+        if (sum_y < 0)
+        {
+            sum_y = 0;
+        }
+        else if (sum_y > 255)
+        {
+            sum_y = 255;
+        }
+
+        d_patch_x[id] = sum_x;
+        d_patch_y[id] = sum_y;
+
+        id += blockSize * gridSize;
+
+    }
+
+}
+
 /* Function for Image class */
 
 
@@ -118,6 +180,7 @@ Image::Image(const char* path, int pool_size_arg)
     img_sobel_patch_y_array = new unsigned char[nb_patch_x * nb_patch_y];
 }
 
+
 void Image::print_image()
 {
 
@@ -126,6 +189,7 @@ void Image::print_image()
     printf("And so the image have %d patch on x and %d patch en y\n", nb_patch_x, nb_patch_y);
 
 }
+
 
 Image::~Image()
 {
@@ -167,6 +231,7 @@ void Image::save_patch_img()
 
 }
 
+
 void Image::create_gray_array()
 {
 
@@ -195,6 +260,7 @@ void Image::create_gray_array()
     cudaMemcpy(img_gray_array, d_gray_img, gray_img_size, cudaMemcpyDeviceToHost);
 
 }
+
 
 void Image::create_sobel_array()
 {
@@ -227,10 +293,44 @@ void Image::create_sobel_array()
 
 }
 
+
 void Image::create_patch_array()
 {
-    
+    unsigned char *d_patch_x;
+    unsigned char *d_patch_y;
+    unsigned char *d_sobel_x_array;
+    unsigned char *d_sobel_y_array;
+
+    size_t patch_size = nb_patch_x * nb_patch_y * sizeof(unsigned char);
+    size_t img_size = width * height * sizeof(unsigned char);
+
+    cudaMalloc(&d_patch_x, patch_size);
+    cudaMalloc(&d_patch_y, patch_size);
+    cudaMalloc(&d_sobel_x_array, img_size);
+    cudaMalloc(&d_sobel_y_array, img_size);
+
+    cudaMemcpy( d_patch_x, img_sobel_patch_x_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_patch_y, img_sobel_patch_y_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_sobel_x_array, img_sobel_x_array, img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_sobel_y_array, img_sobel_y_array, img_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_patch<<<blockSize, gridSize>>>(d_patch_x, d_patch_y, d_sobel_x_array,
+            d_sobel_y_array, pool_size, width, height, nb_patch_x, nb_patch_y,
+            blockSize, gridSize);
+
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(img_sobel_patch_x_array, d_patch_x, patch_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(img_sobel_patch_y_array, d_patch_y, patch_size, cudaMemcpyDeviceToHost);
+
+
 }
+
 
 int Image::get_size()
 {
@@ -240,7 +340,7 @@ int Image::get_size()
 
 int main(void)
 {
-    Image image("../../img/codebar.jpg", 8);
+    Image image("../../img/codebar.jpg", 31);
     image.print_image();
 
     image.create_gray_array();
