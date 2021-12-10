@@ -2,7 +2,7 @@
 
 #include <iostream>
 #include <stdlib.h>
-
+#include <string>
 
 /* GLOBALfunction */
 
@@ -107,11 +107,18 @@ __global__ void compute_patch(unsigned char *d_patch_x, unsigned char *d_patch_y
     while (id < nb_patch)
     {
 
+        //printf("%d,%d,%d start to compute\n", blockIdx.x, threadIdx.x, id);
+
         int id_patch_x = id % nb_patch_x;
-        int id_patch_y = id / nb_patch_y;
+        int id_patch_y = id / nb_patch_x;
 
         int id_pixel = pool_size * id_patch_y * width;
         id_pixel += id_patch_x * pool_size;
+
+        /*
+        printf("%d,%d,%d start to compute the patch %d,%d, and the pixel is %d\n",
+                blockIdx.x, threadIdx.x, id, id_patch_x, id_patch_y, id_pixel);
+        */
 
         int nb_elem = pool_size * pool_size;
         int sum_x = 0;
@@ -121,6 +128,14 @@ __global__ void compute_patch(unsigned char *d_patch_x, unsigned char *d_patch_y
         {
             for (int j = 0; j < pool_size; j++)
             {
+                /*
+                if (blockIdx.x == 1 && threadIdx.x == 1 && id == 6)
+                {
+                    printf("%d,%d,%d compute the pixel  %d for the pixel %d\n",
+                            blockIdx.x, threadIdx.x, id,id_pixel + i * width + j, id_pixel);
+                }
+                */
+
                 sum_x += d_sobel_x_array[id_pixel + i * width + j];
                 sum_y += d_sobel_y_array[id_pixel + i * width + j];
             }
@@ -128,6 +143,13 @@ __global__ void compute_patch(unsigned char *d_patch_x, unsigned char *d_patch_y
 
         sum_x = sum_x / nb_elem;
         sum_y = sum_y / nb_elem;
+
+        /*
+        printf("%d,%d,%d the mean is : %d, %d\n",
+                blockIdx.x, threadIdx.x, id, sum_x, sum_y);
+        */
+
+
 
         if (sum_x < 0)
         {
@@ -147,14 +169,152 @@ __global__ void compute_patch(unsigned char *d_patch_x, unsigned char *d_patch_y
             sum_y = 255;
         }
 
-        d_patch_x[id] = sum_x;
-        d_patch_y[id] = sum_y;
+        d_patch_x[id_patch_y * nb_patch_x + id_patch_x] = sum_x;
+        d_patch_y[id_patch_y * nb_patch_x + id_patch_x] = sum_y;
 
         id += blockSize * gridSize;
 
     }
 
 }
+
+
+__global__ void compute_response(unsigned char *d_response,
+        unsigned char *d_patch_x, unsigned char *d_patch_y,
+        int nb_patch_x, int nb_patch_y, int blockSize, int gridSize)
+{
+
+    int nb_patch = nb_patch_x * nb_patch_y;
+
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+
+    while (id < nb_patch)
+    {
+
+        int value = d_patch_x[id] - d_patch_y[id];
+
+        if (value < 0)
+        {
+            value = 0;
+        }
+        else if (value > 255)
+        {
+            value = 255;
+        }
+
+        d_response[id] = value;
+
+        id += blockSize * gridSize;
+
+    }
+
+}
+
+
+
+__global__ void compute_dilatation(unsigned char *d_response,
+        unsigned char *d_response_clean_1,
+        int width, int weight, int blockSize, int gridSize)
+{
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    int img_size = width * weight;
+
+    while (id < img_size)
+    {
+
+        if (id <= 2 * width)
+        {
+            d_response_clean_1[id] = 0;
+        }
+        else if (id % width <= 1)
+        {
+            d_response_clean_1[id] = 0;
+        }
+        else if (id % width >= (width - 2))
+        {
+            d_response_clean_1[id] = 0;
+        }
+        else if (id >= (img_size - 2 * width))
+        {
+            d_response_clean_1[id] = 0;
+        }
+        else
+        {
+            int max_value = d_response[id];
+
+            for (int i = -2; i <= 2; i++)
+            {
+                for (int j = -2; i <= 2; j++)
+                {
+                    int value = d_response[id + i * width + j];
+
+                    if (value > max_value)
+                    {
+                        max_value = value;
+                    }
+                }
+            }
+
+            d_response_clean_1[id] = max_value;
+
+        }
+
+        id += blockSize * gridSize;
+    }
+}
+
+
+__global__ void compute_erosion(unsigned char *d_response_clean_1,
+        unsigned char *d_response_clean_2,
+        int width, int weight, int blockSize, int gridSize)
+{
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    int img_size = width * weight;
+
+    while (id < img_size)
+    {
+
+        if (id <= 2 * width)
+        {
+            d_response_clean_2[id] = 0;
+        }
+        else if (id % width <= 1)
+        {
+            d_response_clean_2[id] = 0;
+        }
+        else if (id % width >= (width - 2))
+        {
+            d_response_clean_2[id] = 0;
+        }
+        else if (id >= (img_size - 2 * width))
+        {
+            d_response_clean_2[id] = 0;
+        }
+        else
+        {
+            int min_value = d_response_clean_1[id];
+
+            for (int i = -2; i <= 2; i++)
+            {
+                for (int j = -2; i <= 2; j++)
+                {
+                    int value = d_response_clean_1[id + i * width + j];
+
+                    if (value < min_value)
+                    {
+                        min_value = value;
+                    }
+                }
+            }
+
+            d_response_clean_2[id] = min_value;
+
+        }
+
+        id += blockSize * gridSize;
+    }
+}
+
 
 /* Function for Image class */
 
@@ -178,6 +338,9 @@ Image::Image(const char* path, int pool_size_arg)
     img_sobel_y_array = new unsigned char[width * height];
     img_sobel_patch_x_array = new unsigned char[nb_patch_x * nb_patch_y];
     img_sobel_patch_y_array = new unsigned char[nb_patch_x * nb_patch_y];
+    img_response_array = new unsigned char[nb_patch_x * nb_patch_y];
+    img_response_clean_1_array = new unsigned char[nb_patch_x * nb_patch_y];
+    img_response_clean_2_array = new unsigned char[nb_patch_x * nb_patch_y];
 }
 
 
@@ -201,6 +364,11 @@ Image::~Image()
     free(img_gray_array);
     free(img_sobel_x_array);
     free(img_sobel_y_array);
+    free(img_sobel_patch_x_array);
+    free(img_sobel_patch_y_array);
+    free(img_response_array);
+    free(img_response_clean_1_array);
+    free(img_response_clean_2_array);
 }
 
 
@@ -229,6 +397,20 @@ void Image::save_patch_img()
     stbi_write_jpg("../../img/codebar_patch_y.jpg", nb_patch_x, nb_patch_y, 1,
         img_sobel_patch_y_array, 100);
 
+}
+
+
+void Image::save_response_img()
+{
+    stbi_write_jpg("../../img/codebar_response.jpg", nb_patch_x, nb_patch_y, 1,
+        img_response_array, 100);
+}
+
+
+void Image::save_response_clean_img()
+{
+    stbi_write_jpg("../../img/codebar_response_clean.jpg", nb_patch_x, nb_patch_y, 1,
+        img_response_clean_2_array, 100);
 }
 
 
@@ -319,7 +501,7 @@ void Image::create_patch_array()
     blockSize = 5;
     gridSize = 2;
 
-    compute_patch<<<blockSize, gridSize>>>(d_patch_x, d_patch_y, d_sobel_x_array,
+    compute_patch<<<gridSize, blockSize>>>(d_patch_x, d_patch_y, d_sobel_x_array,
             d_sobel_y_array, pool_size, width, height, nb_patch_x, nb_patch_y,
             blockSize, gridSize);
 
@@ -328,6 +510,71 @@ void Image::create_patch_array()
     cudaMemcpy(img_sobel_patch_x_array, d_patch_x, patch_size, cudaMemcpyDeviceToHost);
     cudaMemcpy(img_sobel_patch_y_array, d_patch_y, patch_size, cudaMemcpyDeviceToHost);
 
+
+}
+
+
+void Image::create_response_array()
+{
+    unsigned char *d_patch_x;
+    unsigned char *d_patch_y;
+    unsigned char *d_response;
+
+    size_t patch_size = nb_patch_x * nb_patch_y * sizeof(unsigned char);
+
+    cudaMalloc(&d_patch_x, patch_size);
+    cudaMalloc(&d_patch_y, patch_size);
+    cudaMalloc(&d_response, patch_size);
+
+    cudaMemcpy( d_patch_x, img_sobel_patch_x_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_patch_y, img_sobel_patch_y_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_response, img_response_array, patch_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_response<<<gridSize, blockSize>>>(d_response, d_patch_x, d_patch_y,
+            nb_patch_x, nb_patch_y, blockSize, gridSize);
+
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(img_response_array, d_response, patch_size, cudaMemcpyDeviceToHost);
+}
+
+
+void Image::create_response_clean_array()
+{
+    unsigned char *d_response;
+    unsigned char *d_response_clean_1;
+    unsigned char *d_response_clean_2;
+
+    size_t patch_size = nb_patch_x * nb_patch_y * sizeof(unsigned char);
+
+
+    cudaMalloc(&d_response, patch_size);
+    cudaMalloc(&d_response_clean_1, patch_size);
+    cudaMalloc(&d_response_clean_2, patch_size);
+
+
+    cudaMemcpy( d_response, img_response_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_response_clean_1, img_response_clean_1_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_response_clean_2, img_response_clean_2_array, patch_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_dilatation<<<gridSize, blockSize>>>(d_response, d_response_clean_1,
+            nb_patch_x, nb_patch_y, blockSize, gridSize);
+
+    compute_erosion<<<gridSize, blockSize>>>(d_response_clean_1, d_response_clean_2,
+            nb_patch_x, nb_patch_y, blockSize, gridSize);
+
+    cudaMemcpy(img_response_clean_1_array, d_response_clean_1, patch_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(img_response_clean_2_array, d_response_clean_2, patch_size, cudaMemcpyDeviceToHost);
 
 }
 
@@ -351,6 +598,12 @@ int main(void)
 
     image.create_patch_array();
     image.save_patch_img();
+
+    image.create_response_array();
+    image.save_response_img();
+
+    //image.create_response_clean_array();
+    image.save_response_clean_img();
 
     return 0;
 }
