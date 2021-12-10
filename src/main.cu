@@ -22,8 +22,12 @@ int main(int argc, char **argv)
 
     detector.show_final_result();*/
 
-    GPUBaseline detector = GPUBaseline(DetectorMode::IMAGE);
-    detector.load_img(argv[1], 2);
+    GPUBaseline detector = GPUBaseline();
+    detector.load_img(argv[1]);
+    detector.create_gray_array();
+    detector.save_gray_img();
+    detector.compute_derivatives();
+    detector.save_sobel_img();
 
     return 0;
 }

@@ -1,23 +1,29 @@
-#include "detectorInterface.hpp"
+#include <string>
+#include <iostream>
 
-class GPUBaseline: public DetectorInterface {
+class GPUBaseline
+{
 
 private:
     bool display_;
-    DetectorMode mode_;
 
-    cv::cuda::GpuMat img_;
+    int width;
+    int height;
+    int nb_chan;
+
+    unsigned char *img_array;
+    unsigned char *img_gray_array;
+    unsigned char *img_sobel_x_array;
+    unsigned char *img_sobel_y_array;
 
 public:
-    GPUBaseline(DetectorMode mode, bool display=false);
+    GPUBaseline();
 
-    void compute_derivatives(int pool_size = 31, int n_filters = 2);
-    void compute_gradient(int pool_size = 31);
-    void compute_barcodeness();
-    void clean_barcodeness(int pp_pool_size = 5);
+    void load_img(std::string path, int scale = 1);
+    void create_gray_array();
+    void compute_derivatives();
 
-    void show_final_result(int pool_size = 31);
-
-    __host__ void load_img(std::string path, int scale = 1);
-
+    void save_gray_img();
+    void save_sobel_img();
+    int get_size();
 };
