@@ -162,6 +162,8 @@ void Image::save_patch_img()
 
     stbi_write_jpg("../../img/codebar_patch_x.jpg", nb_patch_x, nb_patch_y, 1,
         img_sobel_patch_x_array, 100);
+    stbi_write_jpg("../../img/codebar_patch_y.jpg", nb_patch_x, nb_patch_y, 1,
+        img_sobel_patch_y_array, 100);
 
 }
 
@@ -240,10 +242,15 @@ int main(void)
 {
     Image image("../../img/codebar.jpg", 8);
     image.print_image();
+
     image.create_gray_array();
     image.save_gray_img();
+
     image.create_sobel_array();
     image.save_sobel_img();
+
+    image.create_patch_array();
+    image.save_patch_img();
 
     return 0;
 }
