@@ -222,7 +222,7 @@ __global__ void compute_dilatation(unsigned char *d_response,
     while (id < img_size)
     {
 
-        if (id <= 2 * width)
+        if (id < 2 * width)
         {
             d_response_clean_1[id] = 0;
         }
@@ -244,7 +244,7 @@ __global__ void compute_dilatation(unsigned char *d_response,
 
             for (int i = -2; i <= 2; i++)
             {
-                for (int j = -2; i <= 2; j++)
+                for (int j = -2; j <= 2; j++)
                 {
                     int value = d_response[id + i * width + j];
 
@@ -296,7 +296,7 @@ __global__ void compute_erosion(unsigned char *d_response_clean_1,
 
             for (int i = -2; i <= 2; i++)
             {
-                for (int j = -2; i <= 2; j++)
+                for (int j = -2; j <= 2; j++)
                 {
                     int value = d_response_clean_1[id + i * width + j];
 
@@ -313,6 +313,39 @@ __global__ void compute_erosion(unsigned char *d_response_clean_1,
 
         id += blockSize * gridSize;
     }
+}
+
+
+__global__ void compute_final(unsigned char *d_final,
+        unsigned char *d_response_clean_2, int nb_patch_x, int nb_patch_y,
+        int width, int weight, int blockSize, int gridSize, int pool_size)
+{
+
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    int img_size = nb_patch_x * nb_patch_y;
+
+    while (id < img_size)
+    {
+        int value = d_response_clean_2[id];
+
+        int id_patch_x = id % nb_patch_x;
+        int id_patch_y = id / nb_patch_x;
+
+        int id_pixel = pool_size * id_patch_y * width;
+        id_pixel += id_patch_x * pool_size;
+
+
+        for (int i = 0; i < pool_size; i++)
+        {
+            for (int j = 0; j < pool_size; j++)
+            {
+                d_final[id_pixel + i * width + j] = value;
+            }
+        }
+
+        id += blockSize * gridSize;
+    }
+
 }
 
 
@@ -341,6 +374,7 @@ Image::Image(const char* path, int pool_size_arg)
     img_response_array = new unsigned char[nb_patch_x * nb_patch_y];
     img_response_clean_1_array = new unsigned char[nb_patch_x * nb_patch_y];
     img_response_clean_2_array = new unsigned char[nb_patch_x * nb_patch_y];
+    final_img = new unsigned char[width * height];
 }
 
 
@@ -369,6 +403,7 @@ Image::~Image()
     free(img_response_array);
     free(img_response_clean_1_array);
     free(img_response_clean_2_array);
+    free(final_img);
 }
 
 
@@ -411,6 +446,13 @@ void Image::save_response_clean_img()
 {
     stbi_write_jpg("../../img/codebar_response_clean.jpg", nb_patch_x, nb_patch_y, 1,
         img_response_clean_2_array, 100);
+}
+
+
+void Image::save_final()
+{
+    stbi_write_jpg("../../img/codebar_final.jpg", width, height, 1,
+        final_img, 100);
 }
 
 
@@ -567,16 +609,42 @@ void Image::create_response_clean_array()
     blockSize = 5;
     gridSize = 2;
 
-    /*
     compute_dilatation<<<gridSize, blockSize>>>(d_response, d_response_clean_1,
             nb_patch_x, nb_patch_y, blockSize, gridSize);
 
     compute_erosion<<<gridSize, blockSize>>>(d_response_clean_1, d_response_clean_2,
             nb_patch_x, nb_patch_y, blockSize, gridSize);
-    */
 
     cudaMemcpy(img_response_clean_1_array, d_response_clean_1, patch_size, cudaMemcpyDeviceToHost);
     cudaMemcpy(img_response_clean_2_array, d_response_clean_2, patch_size, cudaMemcpyDeviceToHost);
+
+}
+
+
+void Image::create_final()
+{
+    unsigned char *d_response_clean_2;
+    unsigned char *d_final;
+
+    size_t patch_size = nb_patch_x * nb_patch_y * sizeof(unsigned char);
+    size_t img_size = width * height * sizeof(unsigned char);
+
+    cudaMalloc(&d_response_clean_2, patch_size);
+    cudaMalloc(&d_final, img_size);
+
+    cudaMemcpy( d_response_clean_2, img_response_clean_2_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_final, final_img, img_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_final<<<gridSize, blockSize>>>(d_final, d_response_clean_2,
+            nb_patch_x, nb_patch_y, width, height,
+            blockSize, gridSize, pool_size);
+
+    cudaMemcpy(final_img, d_final, img_size, cudaMemcpyDeviceToHost);
 
 }
 
@@ -606,6 +674,9 @@ int main(void)
 
     image.create_response_clean_array();
     image.save_response_clean_img();
+
+    image.create_final();
+    image.save_final();
 
     return 0;
 }
