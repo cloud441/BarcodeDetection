@@ -130,6 +130,12 @@ void Image::save_gray_img()
 
 void Image::save_sobel_img()
 {
+
+    for (int i = 0; i < width * height; i++)
+    {
+        printf("x : %d y : %d\n", img_sobel_x_array[i], img_sobel_y_array[i]);
+    }
+
     stbi_write_jpg("../../img/codebar_sobel_x.jpg", width, height, 1,
             img_sobel_x_array, 100);
     stbi_write_jpg("../../img/codebar_sobel_y.jpg", width, height, 1,
