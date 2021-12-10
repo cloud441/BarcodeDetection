@@ -3,6 +3,9 @@
 #include <iostream>
 #include <stdlib.h>
 
+
+/* GLOBALfunction */
+
 __global__ void compute_gray(unsigned char *d_gray_array,
         unsigned char *d_array, int width, int weight,
         int blockSize, int gridSize)
@@ -91,8 +94,10 @@ __global__ void compute_sobel(unsigned char *d_sobel_x,
 }
 
 
+/* Function for Image class */
 
-Image::Image(const char* path)
+
+Image::Image(const char* path, int pool_size_arg)
 {
 
     img_array = stbi_load(path, &width, &height, &nb_chan, 0);
@@ -102,11 +107,25 @@ Image::Image(const char* path)
         std::cout << "Error : can't open the image: " << path << "\n";
     }
 
+    pool_size = pool_size_arg;
+    nb_patch_x =  width / pool_size;
+    nb_patch_y =  height / pool_size;
+
     img_gray_array = new unsigned char[width * height];
     img_sobel_x_array = new unsigned char[width * height];
     img_sobel_y_array = new unsigned char[width * height];
+    img_sobel_patch_x_array = new unsigned char[patch_size_x * patch_size_y];
+    img_sobel_patch_y_array = new unsigned char[patch_size_x * patch_size_y];
 }
 
+void Image::print_image()
+{
+
+    printf("The image have a size of %d x %d x %d\n", width, height, nb_chan);
+    printf("The pool size is %d\n", pool_size);
+    printf("And so the image have %d patch on x and %d patch en y\n", patch_size_x, patch_size_y);
+
+}
 
 Image::~Image()
 {
@@ -131,11 +150,6 @@ void Image::save_gray_img()
 void Image::save_sobel_img()
 {
 
-    for (int i = 0; i < width * height; i++)
-    {
-        printf("x : %d y : %d\n", img_sobel_x_array[i], img_sobel_y_array[i]);
-    }
-
     stbi_write_jpg("../../img/codebar_sobel_x.jpg", width, height, 1,
             img_sobel_x_array, 100);
     stbi_write_jpg("../../img/codebar_sobel_y.jpg", width, height, 1,
@@ -143,17 +157,16 @@ void Image::save_sobel_img()
 }
 
 
+void Image::save_sobel_img()
+{
+
+    stbi_write_jpg("../../img/codebar_patch_x.jpg", width, height, 1,
+        img_patch_x_array, 100);
+
+}
+
 void Image::create_gray_array()
 {
-    /*
-    // CPU Version
-    for (int i = 0; i < height * width; ++i)
-    {
-        img_gray_array[i] = (uint8_t)((img_array[i * 3] +
-                    img_array[i * 3 + 1] + img_array[i * 3 + 2])/3.0);
-    }
-    */
-
 
     unsigned char *d_gray_img;
     unsigned char *d_img;
@@ -212,7 +225,10 @@ void Image::create_sobel_array()
 
 }
 
-
+void Image::create_patch_array()
+{
+    
+}
 
 int Image::get_size()
 {
@@ -222,31 +238,12 @@ int Image::get_size()
 
 int main(void)
 {
-    Image image("../../img/codebar.jpg");
+    Image image("../../img/codebar.jpg", 8);
+    image.print_image();
     image.create_gray_array();
     image.save_gray_img();
     image.create_sobel_array();
     image.save_sobel_img();
-
-    /*
-       int width, height, nb_chan;
-       unsigned char *img = stbi_load("../../img/codebar.jpg", &width, &height, &nb_chan, 0);
-
-       size_t img_size = width * height * nb_chan;
-       printf("We have a size of %dx%d, %d\n", width, height, img_size);
-       size_t gray_img_size = width * height;
-
-       unsigned char *gray_img = (unsigned char *) malloc(gray_img_size);
-
-       for (int i = 0; i < width * height; i++)
-       {
-       gray_img[i] = img[i * 3] * 0.2989 + img[i * 3 + 1] * 0.5870 + img[i * 3 + 2] * 0.1140;
-
-
-       }
-
-       stbi_write_jpg("../../img/img_gray_result.jpg", width, height, 1, gray_img, 100);
-     */
 
     return 0;
 }
