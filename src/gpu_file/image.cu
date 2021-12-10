@@ -567,11 +567,13 @@ void Image::create_response_clean_array()
     blockSize = 5;
     gridSize = 2;
 
+    /*
     compute_dilatation<<<gridSize, blockSize>>>(d_response, d_response_clean_1,
             nb_patch_x, nb_patch_y, blockSize, gridSize);
 
     compute_erosion<<<gridSize, blockSize>>>(d_response_clean_1, d_response_clean_2,
             nb_patch_x, nb_patch_y, blockSize, gridSize);
+    */
 
     cudaMemcpy(img_response_clean_1_array, d_response_clean_1, patch_size, cudaMemcpyDeviceToHost);
     cudaMemcpy(img_response_clean_2_array, d_response_clean_2, patch_size, cudaMemcpyDeviceToHost);
@@ -602,7 +604,7 @@ int main(void)
     image.create_response_array();
     image.save_response_img();
 
-    //image.create_response_clean_array();
+    image.create_response_clean_array();
     image.save_response_clean_img();
 
     return 0;
