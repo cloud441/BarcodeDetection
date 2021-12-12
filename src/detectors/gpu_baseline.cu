@@ -7,7 +7,7 @@
 
 GPUBaseline::GPUBaseline() {}
 
-void GPUBaseline::load_img(std::string path, int scale)
+void GPUBaseline::load_img(std::string path, int pool_size_arg)
 {
     img_array = stbi_load(path.c_str(), &width, &height, &nb_chan, 0);
 
@@ -16,104 +16,93 @@ void GPUBaseline::load_img(std::string path, int scale)
         std::cout << "Error : can't open the image: " << path << "\n";
     }
 
+    pool_size = pool_size_arg;
+    nb_patch_x =  width / pool_size;
+    nb_patch_y =  height / pool_size;
+
     img_gray_array = new unsigned char[width * height];
     img_sobel_x_array = new unsigned char[width * height];
     img_sobel_y_array = new unsigned char[width * height];
+    img_sobel_patch_x_array = new unsigned char[nb_patch_x * nb_patch_y];
+    img_sobel_patch_y_array = new unsigned char[nb_patch_x * nb_patch_y];
+    img_response_array = new unsigned char[nb_patch_x * nb_patch_y];
+    img_response_clean_1_array = new unsigned char[nb_patch_x * nb_patch_y];
+    img_response_clean_2_array = new unsigned char[nb_patch_x * nb_patch_y];
+    final_img = new unsigned char[width * height];
 }
 
-__global__ void compute_gray(unsigned char *d_gray_array,
-                             unsigned char *d_array, int width, int weight,
-                             int blockSize, int gridSize)
+GPUBaseline::~GPUBaseline()
 {
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
-    int img_size = width * weight;
-
-    while (id < img_size)
+    if (img_array)
     {
-        d_gray_array[id] = d_array[id * 3] * 0.2989 +
-                           d_array[id * 3 + 1] * 0.5870 + d_array[id * 3 + 2] * 0.1140;
-
-        id += blockSize * gridSize;
+        stbi_image_free(img_array);
     }
+
+    free(img_gray_array);
+    free(img_sobel_x_array);
+    free(img_sobel_y_array);
+    free(img_sobel_patch_x_array);
+    free(img_sobel_patch_y_array);
+    free(img_response_array);
+    free(img_response_clean_1_array);
+    free(img_response_clean_2_array);
+    free(final_img);
 }
 
-__global__ void compute_sobel(unsigned char *d_sobel_x,
-                              unsigned char *d_sobel_y, unsigned char *d_gray_array, int width,
-                              int weight, int blockSize, int gridSize)
+
+void GPUBaseline::print_image()
 {
-    int id = blockIdx.x * blockDim.x + threadIdx.x;
-    int img_size = width * weight;
-
-    while (id < img_size)
-    {
-        // We will compute 9 pixel withe the next shape
-
-        // 1 2 3
-        // 4 5 6
-        // 7 8 9
-
-        // So we will compte only the pixel that are not in the border
-
-        if (id <= width)
-        {
-            d_sobel_x[id] = 0;
-            d_sobel_y[id] = 0;
-        }
-        else if (id % width == 0)
-        {
-            d_sobel_x[id] = 0;
-            d_sobel_y[id] = 0;
-        }
-        else if (id % width == (width - 1))
-        {
-            d_sobel_x[id] = 0;
-            d_sobel_y[id] = 0;
-        }
-        else if (id >= (img_size - width))
-        {
-            d_sobel_x[id] = 0;
-            d_sobel_y[id] = 0;
-        }
-        else
-        {
-            int sum_x = 0;
-            int sum_y = 0;
-
-            sum_x -= d_gray_array[id - 1 - width];
-            sum_x += d_gray_array[id + 1 - width];
-            sum_x -= 2 * d_gray_array[id - 1];
-            sum_x += 2 * d_gray_array[id + 1];
-            sum_x -= d_gray_array[id - 1 + width];
-            sum_x += d_gray_array[id + 1 + width];
-
-            sum_y -= d_gray_array[id - 1 - width];
-            sum_y -= 2 * d_gray_array[id - width];
-            sum_y -= d_gray_array[id + 1 - width];
-            sum_y += d_gray_array[id - 1 + width];
-            sum_y += 2 * d_gray_array[id + width];
-            sum_y += d_gray_array[id + 1 + width];
-
-            sum_x = abs(sum_x);
-            sum_y = abs(sum_y);
-
-            d_sobel_x[id] = sum_x;
-            d_sobel_y[id] = sum_y;
-        }
-
-        id += blockSize * gridSize;
-    }
+    printf("The image have a size of %d x %d x %d\n", width, height, nb_chan);
+    printf("The pool size is %d\n", pool_size);
+    printf("And so the image have %d patch on x and %d patch en y\n", nb_patch_x, nb_patch_y);
 }
+
+void GPUBaseline::save_gray_img()
+{
+    stbi_write_jpg("../../img/codebar_gray.jpg", width, height, 1,
+            img_gray_array, 100);
+}
+
+void GPUBaseline::save_sobel_img()
+{
+
+    stbi_write_jpg("../../img/codebar_sobel_x.jpg", width, height, 1,
+            img_sobel_x_array, 100);
+    stbi_write_jpg("../../img/codebar_sobel_y.jpg", width, height, 1,
+            img_sobel_y_array, 100);
+}
+
+void GPUBaseline::save_patch_img()
+{
+
+    stbi_write_jpg("../../img/codebar_patch_x.jpg", nb_patch_x, nb_patch_y, 1,
+        img_sobel_patch_x_array, 100);
+    stbi_write_jpg("../../img/codebar_patch_y.jpg", nb_patch_x, nb_patch_y, 1,
+        img_sobel_patch_y_array, 100);
+
+}
+
+void GPUBaseline::save_response_img()
+{
+    stbi_write_jpg("../../img/codebar_response.jpg", nb_patch_x, nb_patch_y, 1,
+        img_response_array, 100);
+}
+
+void GPUBaseline::save_response_clean_img()
+{
+    stbi_write_jpg("../../img/codebar_response_clean.jpg", nb_patch_x, nb_patch_y, 1,
+        img_response_clean_2_array, 100);
+}
+
+void GPUBaseline::save_final()
+{
+    stbi_write_jpg("../../img/codebar_final.jpg", width, height, 1,
+        final_img, 100);
+}
+
 
 void GPUBaseline::create_gray_array()
 {
-    /*
-    // CPU Version
-    for (int i = 0; i < height * width; ++i)
-    {
-        img_gray_array[i] = (uint8_t)((img_array[i * 3] +
-                    img_array[i * 3 + 1] + img_array[i * 3 + 2])/3.0);
-    }
-    */
 
     unsigned char *d_gray_img;
     unsigned char *d_img;
@@ -124,8 +113,9 @@ void GPUBaseline::create_gray_array()
     cudaMalloc(&d_gray_img, gray_img_size);
     cudaMalloc(&d_img, img_size);
 
-    cudaMemcpy(d_gray_img, img_gray_array, gray_img_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_img, img_array, img_size, cudaMemcpyHostToDevice);
+
+    cudaMemcpy( d_gray_img, img_gray_array, gray_img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_img, img_array, img_size, cudaMemcpyHostToDevice);
 
     int blockSize, gridSize;
 
@@ -133,13 +123,14 @@ void GPUBaseline::create_gray_array()
     gridSize = 2;
 
     compute_gray<<<gridSize, blockSize>>>(d_gray_img, d_img, width, height,
-                                          blockSize, gridSize);
+                                            blockSize, gridSize);
     cudaDeviceSynchronize();
 
     cudaMemcpy(img_gray_array, d_gray_img, gray_img_size, cudaMemcpyDeviceToHost);
+
 }
 
-void GPUBaseline::compute_derivatives()
+void GPUBaseline::create_sobel_array()
 {
     unsigned char *d_sobel_x;
     unsigned char *d_sobel_y;
@@ -151,9 +142,10 @@ void GPUBaseline::compute_derivatives()
     cudaMalloc(&d_sobel_y, img_size);
     cudaMalloc(&d_gray_img, img_size);
 
-    cudaMemcpy(d_sobel_x, img_sobel_x_array, img_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_sobel_y, img_sobel_y_array, img_size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_gray_img, img_gray_array, img_size, cudaMemcpyHostToDevice);
+
+    cudaMemcpy( d_sobel_x, img_sobel_x_array, img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_sobel_y, img_sobel_y_array, img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_gray_img, img_gray_array, img_size, cudaMemcpyHostToDevice);
 
     int blockSize, gridSize;
 
@@ -161,29 +153,143 @@ void GPUBaseline::compute_derivatives()
     gridSize = 2;
 
     compute_sobel<<<gridSize, blockSize>>>(d_sobel_x, d_sobel_y, d_gray_img,
-                                           width, height, blockSize, gridSize);
+                                        width, height, blockSize, gridSize);
     cudaDeviceSynchronize();
 
     cudaMemcpy(img_sobel_x_array, d_sobel_x, img_size, cudaMemcpyDeviceToHost);
     cudaMemcpy(img_sobel_y_array, d_sobel_y, img_size, cudaMemcpyDeviceToHost);
 }
 
-void GPUBaseline::save_gray_img()
+void GPUBaseline::create_patch_array()
 {
-    stbi_write_jpg("../../img/codebar_gray.jpg", width, height, 1,
-                   img_gray_array, 100);
+    unsigned char *d_patch_x;
+    unsigned char *d_patch_y;
+    unsigned char *d_sobel_x_array;
+    unsigned char *d_sobel_y_array;
+
+    size_t patch_size = nb_patch_x * nb_patch_y * sizeof(unsigned char);
+    size_t img_size = width * height * sizeof(unsigned char);
+
+    cudaMalloc(&d_patch_x, patch_size);
+    cudaMalloc(&d_patch_y, patch_size);
+    cudaMalloc(&d_sobel_x_array, img_size);
+    cudaMalloc(&d_sobel_y_array, img_size);
+
+    cudaMemcpy( d_patch_x, img_sobel_patch_x_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_patch_y, img_sobel_patch_y_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_sobel_x_array, img_sobel_x_array, img_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_sobel_y_array, img_sobel_y_array, img_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_patch<<<gridSize, blockSize>>>(d_patch_x, d_patch_y, d_sobel_x_array,
+            d_sobel_y_array, pool_size, width, height, nb_patch_x, nb_patch_y,
+            blockSize, gridSize);
+
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(img_sobel_patch_x_array, d_patch_x, patch_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(img_sobel_patch_y_array, d_patch_y, patch_size, cudaMemcpyDeviceToHost);
+
+
 }
 
-void GPUBaseline::save_sobel_img()
+void GPUBaseline::create_response_array()
 {
+    unsigned char *d_patch_x;
+    unsigned char *d_patch_y;
+    unsigned char *d_response;
 
-    for (int i = 0; i < width * height; i++)
-    {
-        printf("x : %d y : %d\n", img_sobel_x_array[i], img_sobel_y_array[i]);
-    }
+    size_t patch_size = nb_patch_x * nb_patch_y * sizeof(unsigned char);
 
-    stbi_write_jpg("../../img/codebar_sobel_x.jpg", width, height, 1,
-                   img_sobel_x_array, 100);
-    stbi_write_jpg("../../img/codebar_sobel_y.jpg", width, height, 1,
-                   img_sobel_y_array, 100);
+    cudaMalloc(&d_patch_x, patch_size);
+    cudaMalloc(&d_patch_y, patch_size);
+    cudaMalloc(&d_response, patch_size);
+
+    cudaMemcpy( d_patch_x, img_sobel_patch_x_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_patch_y, img_sobel_patch_y_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_response, img_response_array, patch_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_response<<<gridSize, blockSize>>>(d_response, d_patch_x, d_patch_y,
+            nb_patch_x, nb_patch_y, blockSize, gridSize);
+
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(img_response_array, d_response, patch_size, cudaMemcpyDeviceToHost);
+}
+
+void GPUBaseline::create_response_clean_array()
+{
+    unsigned char *d_response;
+    unsigned char *d_response_clean_1;
+    unsigned char *d_response_clean_2;
+
+    size_t patch_size = nb_patch_x * nb_patch_y * sizeof(unsigned char);
+
+
+    cudaMalloc(&d_response, patch_size);
+    cudaMalloc(&d_response_clean_1, patch_size);
+    cudaMalloc(&d_response_clean_2, patch_size);
+
+
+    cudaMemcpy( d_response, img_response_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_response_clean_1, img_response_clean_1_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_response_clean_2, img_response_clean_2_array, patch_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_dilatation<<<gridSize, blockSize>>>(d_response, d_response_clean_1,
+            nb_patch_x, nb_patch_y, blockSize, gridSize);
+
+    compute_erosion<<<gridSize, blockSize>>>(d_response_clean_1, d_response_clean_2,
+            nb_patch_x, nb_patch_y, blockSize, gridSize);
+
+    cudaMemcpy(img_response_clean_1_array, d_response_clean_1, patch_size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(img_response_clean_2_array, d_response_clean_2, patch_size, cudaMemcpyDeviceToHost);
+
+}
+
+
+void GPUBaseline::create_final()
+{
+    unsigned char *d_response_clean_2;
+    unsigned char *d_final;
+
+    size_t patch_size = nb_patch_x * nb_patch_y * sizeof(unsigned char);
+    size_t img_size = width * height * sizeof(unsigned char);
+
+    cudaMalloc(&d_response_clean_2, patch_size);
+    cudaMalloc(&d_final, img_size);
+
+    cudaMemcpy( d_response_clean_2, img_response_clean_2_array, patch_size, cudaMemcpyHostToDevice);
+    cudaMemcpy( d_final, final_img, img_size, cudaMemcpyHostToDevice);
+
+    int blockSize, gridSize;
+
+    blockSize = 5;
+    gridSize = 2;
+
+    compute_final<<<gridSize, blockSize>>>(d_final, d_response_clean_2,
+            nb_patch_x, nb_patch_y, width, height,
+            blockSize, gridSize, pool_size);
+
+    cudaMemcpy(final_img, d_final, img_size, cudaMemcpyDeviceToHost);
+
+}
+
+
+int GPUBaseline::get_size()
+{
+    return width * height;
 }
