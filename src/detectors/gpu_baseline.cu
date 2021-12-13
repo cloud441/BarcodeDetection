@@ -5,10 +5,16 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-GPUBaseline::GPUBaseline() {}
+
+
+GPUBaseline::GPUBaseline() {
+    std::filesystem::create_directory(out_dir_);
+}
 
 void GPUBaseline::load_img(std::string path, int pool_size_arg)
 {
+    img_path_ = path;
+    img_fname_ = std::filesystem::path(img_path_).replace_extension().filename();
     img_array = stbi_load(path.c_str(), &width, &height, &nb_chan, 0);
 
     if (img_array == NULL)
@@ -59,44 +65,50 @@ void GPUBaseline::print_image()
 
 void GPUBaseline::save_gray_img()
 {
-    stbi_write_jpg("../../img/codebar_gray.jpg", width, height, 1,
+    auto f_path = std::filesystem::path(out_dir_) / std::filesystem::path(img_fname_ + "_gray.jpg");
+    stbi_write_jpg(f_path.c_str(), width, height, 1,
             img_gray_array, 100);
 }
 
 void GPUBaseline::save_sobel_img()
 {
-
-    stbi_write_jpg("../../img/codebar_sobel_x.jpg", width, height, 1,
+    auto f_path_x = std::filesystem::path(out_dir_) / std::filesystem::path(img_fname_ + "_sobel_x.jpg");
+    stbi_write_jpg(f_path_x.c_str(), width, height, 1,
             img_sobel_x_array, 100);
-    stbi_write_jpg("../../img/codebar_sobel_y.jpg", width, height, 1,
+    auto f_path_y = std::filesystem::path(out_dir_) / std::filesystem::path(img_fname_ + "_sobel_y.jpg");
+    stbi_write_jpg(f_path_y.c_str(), width, height, 1,
             img_sobel_y_array, 100);
 }
 
 void GPUBaseline::save_patch_img()
 {
-
-    stbi_write_jpg("../../img/codebar_patch_x.jpg", nb_patch_x, nb_patch_y, 1,
+    auto f_path_x = std::filesystem::path(out_dir_) / std::filesystem::path(img_fname_ + "patch_x.jpg");
+    stbi_write_jpg(f_path_x.c_str(), nb_patch_x, nb_patch_y, 1,
         img_sobel_patch_x_array, 100);
-    stbi_write_jpg("../../img/codebar_patch_y.jpg", nb_patch_x, nb_patch_y, 1,
+    auto f_path_y = std::filesystem::path(out_dir_) / std::filesystem::path(img_fname_ + "patch_y.jpg");
+    stbi_write_jpg(f_path_y.c_str(), nb_patch_x, nb_patch_y, 1,
         img_sobel_patch_y_array, 100);
 
 }
 
 void GPUBaseline::save_response_img()
 {
-    stbi_write_jpg("../../img/codebar_response.jpg", nb_patch_x, nb_patch_y, 1,
+    auto f_path = std::filesystem::path(out_dir_) / std::filesystem::path(img_fname_ + "_response.jpg");
+    stbi_write_jpg(f_path.c_str(), nb_patch_x, nb_patch_y, 1,
         img_response_array, 100);
 }
 
 void GPUBaseline::save_response_clean_img()
 {
-    stbi_write_jpg("../../img/codebar_response_clean.jpg", nb_patch_x, nb_patch_y, 1,
+    auto f_path = std::filesystem::path(out_dir_) / std::filesystem::path(img_fname_ + "_response_clean.jpg");
+    stbi_write_jpg(f_path.c_str(), nb_patch_x, nb_patch_y, 1,
         img_response_clean_2_array, 100);
 }
 
 void GPUBaseline::save_final()
 {
-    stbi_write_jpg("../../img/codebar_final.jpg", width, height, 1,
+    auto f_path = std::filesystem::path(out_dir_) / std::filesystem::path(img_fname_ + "_final.jpg");
+    stbi_write_jpg(f_path.c_str(), width, height, 1,
         final_img, 100);
 }
 

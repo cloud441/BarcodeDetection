@@ -1,5 +1,6 @@
 #include <string>
 #include <iostream>
+#include <filesystem>
 
 #include "gpu_functions.cuh"
 
@@ -9,7 +10,9 @@ class GPUBaseline
 {
 
 private:
-    bool display_;
+    std::string out_dir_ = "out"; // Directory for all produced images
+    std::string img_path_;
+    std::string img_fname_;
 
     int width;
     int height;
