@@ -49,7 +49,7 @@ void  DetectorInterface::cpu_benchmark_start()
 void  DetectorInterface::cpu_benchmark_end()
 {
     auto end = std::chrono::high_resolution_clock::now();
-    clock_ = end - clock_;
-    printf ("CPU: %ld clicks (%f seconds).\n", clock_, ((float) clock_)/CLOCKS_PER_SEC);
+    auto duration = std::chrono::duration<double, std::milli>(end - clock_).count();
+    printf ("CPU: %f tick_ms (%f seconds).\n", duration, (float) duration / 1000.0);
 
 }
