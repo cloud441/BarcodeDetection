@@ -6,14 +6,14 @@
 
 void print_help()
 {
-    std::cout << "Usage : ./barecodedetection path\n\n"
-        << "option : \n\n" << "\t--help : print the usage\n"
-        << "\t--cpu : to use the cpu baseline\n"
-        << "\t--cpu_opti : to use the multithread cpu baseline\n"
-        << "\t--gpu : use the gpu basline\n"
-        << "\t--step : to save a .jpg of all step (only for gpu baseline\n"
-        << "\t--blocks <int> : number of block to use in the gpu baseline\n"
-        << "\t--threads <int> : number of threads to use in the gpu baseline\n"
+    std::cout << "Usage : ./detector <path> [option]\n\n"
+        << "option : \n\n" << "\t--help : print the usage.\n"
+        << "\t--cpu : use the cpu baseline.\n"
+        << "\t--cpu_opti : use the multithread cpu baseline.\n"
+        << "\t--gpu : use the gpu baseline.\n"
+        << "\t--step : to save a .jpg of all step (only for gpu baseline).\n"
+        << "\t--blocks <int> : number of block to use in the gpu baseline (only for gpu baseline).\n"
+        << "\t--threads <int> : number of threads to use in the gpu baseline (only for gpu baseline).\n"
         << std::endl;
 }
 
@@ -26,7 +26,6 @@ int main(int argc, char **argv)
 
     std::string path = std::string(argv[1]);
 
-    bool cpu = false;
     bool cpu_opti = false;
 
     bool gpu = false;
@@ -43,19 +42,16 @@ int main(int argc, char **argv)
         }
         else if (strcmp(argv[i],"--cpu") == 0)
         {
-            cpu = true;
             cpu_opti = false;
             gpu = false;
         }
         else if (strcmp(argv[i],"--cpu_opti") == 0)
         {
-            cpu = false;
             cpu_opti = true;
             gpu = false;
         }
         else if (strcmp(argv[i],"--gpu") == 0)
         {
-            cpu = false;
             cpu_opti = false;
             gpu = true;
         }
@@ -117,7 +113,24 @@ int main(int argc, char **argv)
         detector.save_final();
     }
 
-    else if (cpu)
+    else if (cpu_opti)
+    {
+        CPUMultithread detector = CPUMultithread(DetectorMode::IMAGE);
+        detector.load_img(argv[1], 2);
+
+        //    detector.cpu_benchmark_start();
+        detector.compute_derivatives();
+        //    detector.cpu_benchmark_end();
+        detector.compute_gradient();
+
+        detector.compute_barcodeness();
+
+        detector.clean_barcodeness();
+
+        detector.show_final_result();
+    }
+
+    else
     {
         CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE);
         detector.load_img(argv[1], 2);
@@ -135,22 +148,6 @@ int main(int argc, char **argv)
 
     }
 
-    else if (cpu_opti)
-    {
-        CPUMultithread detector = CPUMultithread(DetectorMode::IMAGE);
-        detector.load_img(argv[1], 2);
-
-        //    detector.cpu_benchmark_start();
-        detector.compute_derivatives();
-        //    detector.cpu_benchmark_end();
-        detector.compute_gradient();
-
-        detector.compute_barcodeness();
-
-        detector.clean_barcodeness();
-
-        detector.show_final_result();
-    }
 
     return 0;
 }
