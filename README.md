@@ -6,4 +6,5 @@ This repository is a GPGPU project directed by EPITA courses with pedagogical pu
 * Kevin GUILLET
 * Corentin BUNEL
 * Maxime LEHERLE
-* ?
+* Antoine Julien
+* Victor Dutto

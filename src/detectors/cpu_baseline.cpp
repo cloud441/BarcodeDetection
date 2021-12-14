@@ -3,6 +3,8 @@
 
 CPUBaseline::CPUBaseline(DetectorMode mode, bool display)
     : DetectorInterface(mode, display) {
+        this->mode_ = mode;
+        this->display_ = display;
     }
 
 

@@ -5,3 +5,5 @@
 #include <cassert>
 
 #include "cpu_baseline.hpp"
+#include "cpu_multithread.hpp"
+#include "gpu_baseline.hpp"
