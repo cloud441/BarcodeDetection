@@ -1,5 +1,6 @@
 #include "detectorInterface.hpp"
-
+#include <ctime>
+#include <chrono>
 
 DetectorInterface::DetectorInterface(DetectorMode mode, bool display) {
     this->mode_ = mode;
@@ -42,12 +43,13 @@ void  DetectorInterface::gpu_benchmark_end()
 
 void  DetectorInterface::cpu_benchmark_start()
 {
-    this->clock_ = std::clock();
+    this->clock_ = std::chrono::high_resolution_clock::now();
 }
 
 void  DetectorInterface::cpu_benchmark_end()
 {
-    clock_ = std::clock() - clock_;
+    auto end = std::chrono::high_resolution_clock::now();
+    clock_ = end - clock_;
     printf ("CPU: %ld clicks (%f seconds).\n", clock_, ((float) clock_)/CLOCKS_PER_SEC);
 
 }
