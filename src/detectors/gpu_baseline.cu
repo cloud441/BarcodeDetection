@@ -1,13 +1,14 @@
 #include "gpu_baseline.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include <../stb_image.h>
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image_write.h>
+#include <../stb_image_write.h>
 
 
-
-GPUBaseline::GPUBaseline() {
+GPUBaseline::GPUBaseline(int block, int thread) {
+    nb_block = block;
+    nb_thread = thread;
     std::filesystem::create_directory(out_dir_);
 }
 
@@ -129,13 +130,8 @@ void GPUBaseline::create_gray_array()
     cudaMemcpy( d_gray_img, img_gray_array, gray_img_size, cudaMemcpyHostToDevice);
     cudaMemcpy( d_img, img_array, img_size, cudaMemcpyHostToDevice);
 
-    int blockSize, gridSize;
-
-    blockSize = 5;
-    gridSize = 2;
-
-    compute_gray<<<gridSize, blockSize>>>(d_gray_img, d_img, width, height,
-                                            blockSize, gridSize);
+    compute_gray<<<nb_block, nb_thread>>>(d_gray_img, d_img, width, height,
+                                            nb_block, nb_thread);
     cudaDeviceSynchronize();
 
     cudaMemcpy(img_gray_array, d_gray_img, gray_img_size, cudaMemcpyDeviceToHost);
@@ -159,13 +155,8 @@ void GPUBaseline::create_sobel_array()
     cudaMemcpy( d_sobel_y, img_sobel_y_array, img_size, cudaMemcpyHostToDevice);
     cudaMemcpy( d_gray_img, img_gray_array, img_size, cudaMemcpyHostToDevice);
 
-    int blockSize, gridSize;
-
-    blockSize = 5;
-    gridSize = 2;
-
-    compute_sobel<<<gridSize, blockSize>>>(d_sobel_x, d_sobel_y, d_gray_img,
-                                        width, height, blockSize, gridSize);
+    compute_sobel<<<nb_block, nb_thread>>>(d_sobel_x, d_sobel_y, d_gray_img,
+                                        width, height, nb_block, nb_thread);
     cudaDeviceSynchronize();
 
     cudaMemcpy(img_sobel_x_array, d_sobel_x, img_size, cudaMemcpyDeviceToHost);
@@ -192,14 +183,9 @@ void GPUBaseline::create_patch_array()
     cudaMemcpy( d_sobel_x_array, img_sobel_x_array, img_size, cudaMemcpyHostToDevice);
     cudaMemcpy( d_sobel_y_array, img_sobel_y_array, img_size, cudaMemcpyHostToDevice);
 
-    int blockSize, gridSize;
-
-    blockSize = 5;
-    gridSize = 2;
-
-    compute_patch<<<gridSize, blockSize>>>(d_patch_x, d_patch_y, d_sobel_x_array,
+    compute_patch<<<nb_block, nb_thread>>>(d_patch_x, d_patch_y, d_sobel_x_array,
             d_sobel_y_array, pool_size, width, height, nb_patch_x, nb_patch_y,
-            blockSize, gridSize);
+            nb_block, nb_thread);
 
     cudaDeviceSynchronize();
 
@@ -225,13 +211,8 @@ void GPUBaseline::create_response_array()
     cudaMemcpy( d_patch_y, img_sobel_patch_y_array, patch_size, cudaMemcpyHostToDevice);
     cudaMemcpy( d_response, img_response_array, patch_size, cudaMemcpyHostToDevice);
 
-    int blockSize, gridSize;
-
-    blockSize = 5;
-    gridSize = 2;
-
-    compute_response<<<gridSize, blockSize>>>(d_response, d_patch_x, d_patch_y,
-            nb_patch_x, nb_patch_y, blockSize, gridSize);
+    compute_response<<<nb_block, nb_thread>>>(d_response, d_patch_x, d_patch_y,
+            nb_patch_x, nb_patch_y, nb_block, nb_thread);
 
     cudaDeviceSynchronize();
 
@@ -256,16 +237,11 @@ void GPUBaseline::create_response_clean_array()
     cudaMemcpy( d_response_clean_1, img_response_clean_1_array, patch_size, cudaMemcpyHostToDevice);
     cudaMemcpy( d_response_clean_2, img_response_clean_2_array, patch_size, cudaMemcpyHostToDevice);
 
-    int blockSize, gridSize;
+    compute_dilatation<<<nb_block, nb_thread>>>(d_response, d_response_clean_1,
+            nb_patch_x, nb_patch_y, nb_block, nb_thread);
 
-    blockSize = 5;
-    gridSize = 2;
-
-    compute_dilatation<<<gridSize, blockSize>>>(d_response, d_response_clean_1,
-            nb_patch_x, nb_patch_y, blockSize, gridSize);
-
-    compute_erosion<<<gridSize, blockSize>>>(d_response_clean_1, d_response_clean_2,
-            nb_patch_x, nb_patch_y, blockSize, gridSize);
+    compute_erosion<<<nb_block, nb_thread>>>(d_response_clean_1, d_response_clean_2,
+            nb_patch_x, nb_patch_y, nb_block, nb_thread);
 
     cudaMemcpy(img_response_clean_1_array, d_response_clean_1, patch_size, cudaMemcpyDeviceToHost);
     cudaMemcpy(img_response_clean_2_array, d_response_clean_2, patch_size, cudaMemcpyDeviceToHost);
@@ -287,14 +263,9 @@ void GPUBaseline::create_final()
     cudaMemcpy( d_response_clean_2, img_response_clean_2_array, patch_size, cudaMemcpyHostToDevice);
     cudaMemcpy( d_final, final_img, img_size, cudaMemcpyHostToDevice);
 
-    int blockSize, gridSize;
-
-    blockSize = 5;
-    gridSize = 2;
-
-    compute_final<<<gridSize, blockSize>>>(d_final, d_response_clean_2,
+    compute_final<<<nb_block, nb_thread>>>(d_final, d_response_clean_2,
             nb_patch_x, nb_patch_y, width, height,
-            blockSize, gridSize, pool_size);
+            nb_block, nb_thread, pool_size);
 
     cudaMemcpy(final_img, d_final, img_size, cudaMemcpyDeviceToHost);
 

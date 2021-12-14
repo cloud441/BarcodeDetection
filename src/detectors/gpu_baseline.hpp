@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 #include <iostream>
 #include <filesystem>
@@ -10,6 +12,7 @@ class GPUBaseline
 {
 
 private:
+
     std::string out_dir_ = "out"; // Directory for all produced images
     std::string img_path_;
     std::string img_fname_;
@@ -21,6 +24,8 @@ private:
     int nb_patch_x;
     int nb_patch_y;
 
+    int nb_block;
+    int nb_thread;
 
     unsigned char *img_array;
     unsigned char *img_gray_array;
@@ -34,10 +39,10 @@ private:
     unsigned char *final_img;
 
 public:
-    GPUBaseline();
+    GPUBaseline(int block, int thread);
     ~GPUBaseline();
 
-    void load_img(std::string path, int pool_size_arg = 1);
+    void load_img(std::string path, int pool_size_arg = 15);
     void create_gray_array();
     void create_sobel_array();
     void create_patch_array();
