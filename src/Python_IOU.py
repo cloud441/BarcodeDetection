@@ -1,10 +1,7 @@
 import os
 import sys
 import numpy as np
-import skimage
-import sklearn
 import cv2
-import matplotlib.pyplot as plt
 
 
 img1_name = sys.argv[1]
@@ -20,10 +17,8 @@ white_co_union = 0
 
 for i in range(len(img1)):
     for j in range((len(img1[0]))):
-        
         if ((img1[i][j] == 255) and (img2[i][j] == 255)):
             white_co_inter += 1
-            
         if ((img1[i][j] == 255) or (img2[i][j] == 255)):
             white_co_union += 1
 
