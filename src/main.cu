@@ -118,9 +118,9 @@ int main(int argc, char **argv)
         CPUMultithread detector = CPUMultithread(DetectorMode::IMAGE);
         detector.load_img(argv[1], 2);
 
-        //    detector.cpu_benchmark_start();
+        detector.cpu_benchmark_start();
         detector.compute_derivatives();
-        //    detector.cpu_benchmark_end();
+        detector.cpu_benchmark_end();
         detector.compute_gradient();
 
         detector.compute_barcodeness();
@@ -133,11 +133,12 @@ int main(int argc, char **argv)
     else
     {
         CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE);
+
+        detector.cpu_benchmark_start();
         detector.load_img(argv[1], 2);
 
-        //    detector.cpu_benchmark_start();
         detector.compute_derivatives();
-        //    detector.cpu_benchmark_end();
+
         detector.compute_gradient();
 
         detector.compute_barcodeness();
@@ -145,6 +146,7 @@ int main(int argc, char **argv)
         detector.clean_barcodeness();
 
         detector.show_final_result();
+        detector.cpu_benchmark_end();
 
     }
 

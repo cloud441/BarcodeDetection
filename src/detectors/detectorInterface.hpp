@@ -29,8 +29,8 @@ class DetectorInterface {
         Mat patch_barcodeness_;
         Mat final_result_;
 
-        //benchmarck:
-        std::clock_t clock_;
+        //benchmark:
+        std::chrono::_V2::system_clock::time_point clock_;
 
 
 
