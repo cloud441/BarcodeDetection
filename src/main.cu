@@ -11,7 +11,7 @@ void print_help()
         << "\t--cpu : use the cpu baseline.\n"
         << "\t--cpu_opti : use the multithread cpu baseline.\n"
         << "\t--gpu : use the gpu baseline.\n"
-        << "\t--step : to save a .jpg of all step (only for gpu baseline).\n"
+        << "\t--step : show step image in CPU mode, and save step image in GPU mode.\n"
         << "\t--blocks <int> : number of block to use in the gpu baseline (only for gpu baseline).\n"
         << "\t--threads <int> : number of threads to use in the gpu baseline (only for gpu baseline).\n"
         << std::endl;
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 
     else if (cpu_opti)
     {
-        CPUMultithread detector = CPUMultithread(DetectorMode::IMAGE);
+        CPUMultithread detector = CPUMultithread(DetectorMode::IMAGE, save_all_step);
         detector.cpu_benchmark_start();
 
         detector.load_img(argv[1], 2);
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 
     else
     {
-        CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE, false);
+        CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE, save_all_step);
 
         detector.cpu_benchmark_start();
         detector.load_img(argv[1], 2);
