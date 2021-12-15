@@ -72,7 +72,7 @@ int main(int argc, char **argv)
     if (gpu)
     {
         GPUBaseline detector = GPUBaseline(nb_block, nb_thread);
-        detector.load_img(argv[1]);
+        detector.load_img(argv[1], 31);
 
         detector.create_gray_array();
         if (save_all_step)
@@ -133,7 +133,7 @@ int main(int argc, char **argv)
 
     else
     {
-        CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE);
+        CPUBaseline detector = CPUBaseline(DetectorMode::IMAGE, false);
 
         detector.cpu_benchmark_start();
         detector.load_img(argv[1], 2);

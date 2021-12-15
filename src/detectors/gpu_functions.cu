@@ -337,6 +337,10 @@ __global__ void compute_threshold(unsigned char* d_response_clean_2, int max_val
         {
             d_response_clean_2[id] = 0;
         }
+        else
+        {
+            d_response_clean_2[id] = 255;
+        }
         id += blockSize * gridSize;
     }
 }

@@ -42,7 +42,7 @@ public:
     GPUBaseline(int block, int thread);
     ~GPUBaseline();
 
-    void load_img(std::string path, int pool_size_arg = 15);
+    void load_img(std::string path, int pool_size_arg = 31);
     void create_gray_array();
     void create_sobel_array();
     void create_patch_array();
