@@ -242,6 +242,19 @@ void GPUBaseline::create_response_clean_array()
 
     compute_erosion<<<nb_block, nb_thread>>>(d_response_clean_1, d_response_clean_2,
             nb_patch_x, nb_patch_y, nb_block, nb_thread);
+    
+    int max_value = 0;
+    
+    for (int i = 0; i < nb_patch_x * nb_patch_y; i++)
+    {
+        if (d_response_clean_2[i] > max_value)
+        {
+            max_value = d_response_clean_2[i];
+        }
+    }
+    
+    compute_threshold<<<nb_block, nb_thread>>>(d_response_clean_2, max_value, 
+                                   nb_patch_x, nb_patch_y, nb_block, nb_thread);
 
     cudaMemcpy(img_response_clean_1_array, d_response_clean_1, patch_size, cudaMemcpyDeviceToHost);
     cudaMemcpy(img_response_clean_2_array, d_response_clean_2, patch_size, cudaMemcpyDeviceToHost);
