@@ -321,3 +321,24 @@ __global__ void compute_final(unsigned char *d_final,
         id += blockSize * gridSize;
     }
 }
+
+
+
+__global__ void compute_threshold(unsigned char* d_response_clean_2, int max_value, 
+                                   int nb_patch_x, int nb_patch_y, int nb_block, int nb_thread);
+{
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    int img_size = nb_patch_x * nb_patch_y;
+  
+    while (id < img_size)
+    {
+      
+        if (d_response_clean_2[id] < (0.5 * max_value))
+        {
+            d_response_clean_2[id] = 0;
+        }
+      
+        id += blockSize * gridSize;
+    }
+  
+}
