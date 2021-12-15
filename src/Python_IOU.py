@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 img1_name = sys.argv[1]
-img2_name = sys.argv[1]
+img2_name = sys.argv[2]
 
 
 img1 = cv2.imread(img1_name, cv2.IMREAD_GRAYSCALE)
