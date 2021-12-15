@@ -26,3 +26,6 @@ __global__ void compute_erosion(unsigned char *d_response_clean_1,
 __global__ void compute_final(unsigned char *d_final,
                     unsigned char *d_response_clean_2, int nb_patch_x, int nb_patch_y,
                     int width, int weight, int blockSize, int gridSize, int pool_size);
+
+__global__ void compute_threshold(unsigned char* d_response_clean_2, int max_value, 
+                                   int nb_patch_x, int nb_patch_y, int gridSize, int blockSize);
